@@ -41,6 +41,7 @@ class elm():
         # weight matrix beta is initialized as the zero matrix.
         self.beta = np.zeros((self.hidden_units, self.output_dim))
         self.one_hot = one_hot
+        self.elm_type = elm_type
 
         # if classification problem and one_hot == True
         if elm_type =='clf' and self.one_hot:
@@ -96,7 +97,7 @@ class elm():
         train_time: str
             time of computing beta
         '''
-        self.time1 = time.clock()
+        self.time1 = time.time()
         self.H = self.__input2hidden(self.x)
         if self.elm_type == 'clf':
             if self.one_hot:
@@ -119,7 +120,7 @@ class elm():
             self.tmp1 = inv(np.eye(self.H.shape[0])/self.C + np.dot(self.H, self.H.T))
             self.tmp2 = np.dot(self.H.T, self.tmp1)
             self.beta = np.dot(self.tmp2.T, self.y_temp)
-        self.time2 = time.clock()
+        self.time2 = time.time()
 
         # comput the results
         self.result = self.__hidden2output(self.H)
