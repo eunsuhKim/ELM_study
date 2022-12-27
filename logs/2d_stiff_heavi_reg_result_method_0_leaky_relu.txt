@@ -1,0 +1,17 @@
+model option:  {'elm_type': 'reg', 'random_type': 'normal', 'activation_function': 'leaky_relu', 'hidden_units': 2048, 'C': 1.0, 'one_hot': False}
+regression beta:
+ [[-1.54587609e+03]
+ [ 1.62950326e+00]
+ [ 2.30174455e-01]
+ ...
+ [ 1.52418378e+03]
+ [-3.84353163e-01]
+ [-1.33769611e-01]]
+regression beta:
+ (2048, 1)
+regression train score:
+ 0.019455043132123553
+regression running time:
+ 3.3677167892456055
+regression result:  (2550, 1)
+regression score: 

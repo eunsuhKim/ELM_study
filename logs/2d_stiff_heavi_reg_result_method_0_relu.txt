@@ -1,0 +1,17 @@
+model option:  {'elm_type': 'reg', 'random_type': 'normal', 'activation_function': 'relu', 'hidden_units': 2048, 'C': 1.0, 'one_hot': False}
+regression beta:
+ [[ 3.00761080e+00]
+ [ 1.55079603e-04]
+ [-9.97551527e-01]
+ ...
+ [-9.96475558e-01]
+ [ 9.96894312e-01]
+ [ 0.00000000e+00]]
+regression beta:
+ (2048, 1)
+regression train score:
+ 0.02971010975089039
+regression running time:
+ 3.6329429149627686
+regression result:  (2550, 1)
+regression score: 
