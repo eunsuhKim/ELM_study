@@ -41,7 +41,8 @@ class elm():
             self.output_dim = np.unique(self.y).shape[0]
         elif elm_type == 'reg':
             self.output_dim = self.y.shape[1]
-        
+        elif elm_type == 'pde':
+            self.output_dim = self.y.shape[1]
         # weight matrix beta is initialized as the zero matrix.
         self.beta = np.zeros((self.hidden_units, self.output_dim))
         self.one_hot = one_hot
@@ -77,6 +78,40 @@ class elm():
             self.temH = np.dot(self.W, x.T) + self.b    
             H = self.act_func(self.temH)
             return H
+        elif self.elm_type == 'pde':
+            def g(x,t):
+                
+                XT = np.concatenate([x,t],axis=0)
+                res = np.dot(self.W, XT) + self.b   
+                print('g_res:',res.shape)
+                return self.act_func(res) 
+            
+            def f(X,T):
+                
+                X_ones = np.ones_like(X)
+                X_zeros = np.zeros_like(X)
+                T_zeros = np.zeros_like(T)
+                res = g(X,T)+(X-1)*g(X_zeros,T)-X*g(X_ones,T)- X*g(X_zeros,T_zeros)\
+                        + X*g(X_ones,T_zeros)-g(X,T_zeros)+ g(X_zeros,T_zeros)+np.sin(np.pi*X)
+                print('f_res:',res.shape)
+                return res
+            def residual_(x,t):
+                print('x.shape',x.shape)
+                print('t.shape',t.shape)
+                print('f(x,t).shape',f(x,t).shape)
+                F_xx = egrad(egrad(f,0),0)(x,t)
+                print("F_xx.shape",F_xx.shape)
+                F_t = egrad(f,1)(x,t)
+                print("F_t.shape",F_t.shape)
+
+                res = F_xx -F_t
+                print("residual shape",res.shape)
+                return res
+            # residual = np.vectorize(residual_,signature='(n,1),(n,1)->(32,n)')
+            X = x[:,0][None,:]
+            T = x[:,1][None,:]
+            
+            return residual_(X,T)
     
     # This function compute the output.
     def __hidden2output(self, H):
@@ -112,9 +147,12 @@ class elm():
             self.y_temp = self.y
         # no regularization
         if algorithm == 'no_re':
+            if self.elm_type == 'pde':
+                self.beta = np.dot(np.linalg.pinv(self.H.T),self.y_temp)
 
-            # self.beta = np.dot(pinv2(self.H.T), self.y_temp)
-            self.beta = np.dot(np.linalg.pinv(self.H.T), self.y_temp)
+            else:
+                # self.beta = np.dot(pinv2(self.H.T), self.y_temp)
+                self.beta = np.dot(np.linalg.pinv(self.H.T), self.y_temp)
         # faster algorithm 1
         if algorithm == 'solution1':
             self.tmp1 = inv(np.eye(self.H.shape[0])/self.C +np.dot(self.H, self.H.T))
@@ -150,7 +188,8 @@ class elm():
                 np.sum(
                     (self.result - self.y)*(self.result-self.y)/self.y.shape[0])
             )
-        
+        if self.elm_type == 'pde':
+            self.train_score = None
         train_time = str(self.time2- self.time1)
         return self.beta, self.train_score, train_time
 

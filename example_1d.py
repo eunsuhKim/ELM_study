@@ -11,7 +11,7 @@ import sys
 
 import argparse
 
-is_py = False
+is_py = True
 
 if is_py:
     parser = argparse.ArgumentParser()
@@ -19,7 +19,7 @@ if is_py:
     args = parser.parse_args()
     opt_num = int(args.opt_num)
 
-    sys.stdout = open('logs/result_txts.txt','w')
+    sys.stdout = open(f"logs/1d_reg_result_method_{opt_num}.txt",'w')
 
 else:
     opt_num = 0
@@ -38,8 +38,8 @@ xtoy, ytoy = stdsc.fit_transform(x), stdsc.fit_transform(y)
 
 options = {
     0:{'C':1., 'alg':'no_re'},
-    1:{'C':1e16, 'alg':'solution1'},
-    2:{'C':1e16, 'alg':'solution2'}
+    1:{'C':1e10, 'alg':'solution1'},
+    2:{'C':1e10, 'alg':'solution2'}
     }
 
 model = elm(x= xtoy, y=ytoy, C = options[opt_num]['C'], hidden_units=32, activation_function='sigmoid', random_type='normal', elm_type='reg')
@@ -61,6 +61,6 @@ plt.plot(xtoy, ytoy, 'bo',label = 'data')
 plt.plot(xtoy, prediction, 'r--', label = 'prediction')
 plt.title('regression result')
 plt.legend()
-plt.savefig("figure/"+model.elm_type+"_result.pdf")
+plt.savefig("figure/1d_reg_"+model.elm_type+f"_result_method_{opt_num}.pdf")
 
 # %%

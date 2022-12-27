@@ -1,10 +1,8 @@
-import numpy as np
-from scipy.linalg import inv
+import numpy as onp
+from scipy.linalg import pinv #pinv2, inv
 import time
-# from autograd import grad
-# from autograd import elementwise_grad as egrad
-# import autograd.numpy as np
-# from autograd import jacobian
+import jax.numpy as np
+from jax import grad, vmap, jacfwd
 class elm():
     
     def __init__(self, x,y,C,elm_type='reg',one_hot = False,hidden_units=[50,1], activation_function='sin',random_type='normal'):
@@ -41,7 +39,8 @@ class elm():
             self.output_dim = np.unique(self.y).shape[0]
         elif elm_type == 'reg':
             self.output_dim = self.y.shape[1]
-        
+        elif elm_type == 'pde':
+            self.output_dim = self.y.shape[1]
         # weight matrix beta is initialized as the zero matrix.
         self.beta = np.zeros((self.hidden_units, self.output_dim))
         self.one_hot = one_hot
@@ -56,11 +55,11 @@ class elm():
         # 'uniform': uniform distribution U(0,1)
         # 'normal': normal distribution N(0,0.5)
         if self.random_type == 'uniform':
-            self.W = np.random.uniform(low=0,high = 1, size=(self.hidden_units, self.x.shape[1]))
-            self.b = np.random.uniform(low = 0, high = 1, size = (self.hidden_units, 1))
+            self.W = onp.random.uniform(low=0,high = 1, size=(self.hidden_units, self.x.shape[1]))
+            self.b = onp.random.uniform(low = 0, high = 1, size = (self.hidden_units, 1))
         if self.random_type =='normal':
-            self.W = np.random.normal(loc=0, scale=0.5, size=(self.hidden_units, self.x.shape[1]))
-            self.b = np.random.normal(loc=0, scale=0.5, size=(self.hidden_units, 1))
+            self.W = onp.random.normal(loc=0, scale=0.5, size=(self.hidden_units, self.x.shape[1]))
+            self.b = onp.random.normal(loc=0, scale=0.5, size=(self.hidden_units, 1))
         if self.activation_function == 'sigmoid':
             self.act_func = lambda x: 1/(1+np.exp(-x))
         if self.activation_function =='relu':
@@ -77,6 +76,61 @@ class elm():
             self.temH = np.dot(self.W, x.T) + self.b    
             H = self.act_func(self.temH)
             return H
+        elif self.elm_type == 'pde':
+            def g(x,t):
+                
+                XT = np.concatenate([x,t],axis=0)
+                res = np.dot(self.W, XT) + self.b   
+                print('g_res:',res.shape)
+                return self.act_func(res) 
+            
+            def f(X,T):
+                
+                X_ones = np.ones_like(X)
+                X_zeros = np.zeros_like(X)
+                T_zeros = np.zeros_like(T)
+                res = g(X,T)+(X-1)*g(X_zeros,T)-X*g(X_ones,T)- X*g(X_zeros,T_zeros)\
+                        + X*g(X_ones,T_zeros)-g(X,T_zeros)+ g(X_zeros,T_zeros)+np.sin(np.pi*X)
+                print('f_res:',res.shape)
+                return res
+            def residual_(x,t):
+                # print('x.shape',x.shape)
+                # print('t.shape',t.shape)
+                # print('f(x,t).shape',f(x,t).shape)
+                def f_x(x,t):
+                    
+                    res_ = jacfwd(residual_,0)(x,t)
+                    res = np.zeros((res_.shape[0],res_.shape[1]))
+                    for i in range(jacfwd.shape[1]):
+                        res[:,i] = res_[:,i,0,i]
+                    return res
+                def f_t(x,t):
+                    
+                    res_ = jacfwd(residual_,1)(x,t)
+                    res = np.zeros((res_.shape[0],res_.shape[1]))
+                    for i in range(jacfwd.shape[1]):
+                        res[:,i] = res_[:,i,0,i]
+                    return res
+                def f_xx(x,t):
+                    
+                    res_ = jacfwd(f_x,0)(x,t)
+                    res = np.zeros((res_.shape[0],res_.shape[1]))
+                    for i in range(jacfwd.shape[1]):
+                        res[:,i] = res_[:,i,0,i]
+                    return res
+                F_xx = f_xx(x,t)
+                print("F_xx.shape",F_xx.shape)
+                F_t =f_t(x,t)
+                print("F_t.shape",F_t.shape)
+
+                res = F_xx -F_t
+                print("residual shape",res.shape)
+                return res
+            
+            X = x[:,0][None,:]
+            T = x[:,1][None,:]
+            
+            return residual_(X,T)
     
     # This function compute the output.
     def __hidden2output(self, H):
@@ -112,18 +166,20 @@ class elm():
             self.y_temp = self.y
         # no regularization
         if algorithm == 'no_re':
+            if self.elm_type == 'pde':
+                self.beta = np.dot(np.linalg.pinv(self.H.T),self.y_temp)
 
-            # self.beta = np.dot(pinv2(self.H.T), self.y_temp)
-            self.beta = np.dot(np.linalg.pinv(self.H.T), self.y_temp)
+            else:
+                self.beta = np.dot(np.linalg.pinv(self.H.T), self.y_temp)
         # faster algorithm 1
         if algorithm == 'solution1':
-            self.tmp1 = inv(np.eye(self.H.shape[0])/self.C +np.dot(self.H, self.H.T))
+            self.tmp1 = np.linalg.inv(np.eye(self.H.shape[0])/self.C +np.dot(self.H, self.H.T))
             self.tmp2 = np.dot(self.tmp1, self.H)
             self.beta = np.dot(self.tmp2, self.y_temp)
 
         # faster algorithm 2
         if algorithm == 'solution2':
-            self.tmp1 = inv(np.eye(self.H.shape[0])/self.C + np.dot(self.H, self.H.T))
+            self.tmp1 = np.linalg.inv(np.eye(self.H.shape[0])/self.C + np.dot(self.H, self.H.T))
             self.tmp2 = np.dot(self.H.T, self.tmp1)
             self.beta = np.dot(self.tmp2.T, self.y_temp)
         self.time2 = time.time()
@@ -150,7 +206,8 @@ class elm():
                 np.sum(
                     (self.result - self.y)*(self.result-self.y)/self.y.shape[0])
             )
-        
+        if self.elm_type == 'pde':
+            self.train_score = None
         train_time = str(self.time2- self.time1)
         return self.beta, self.train_score, train_time
 
