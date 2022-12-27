@@ -1,0 +1,17 @@
+model option:  {'elm_type': 'reg', 'random_type': 'normal', 'activation_function': 'tanh', 'hidden_units': 2048, 'C': 1.0, 'one_hot': False}
+regression beta:
+ [[ 7.68184418e+08]
+ [-4.69531661e+09]
+ [ 2.28398440e+09]
+ ...
+ [-1.01190353e+09]
+ [-4.64738192e+09]
+ [-1.23645337e+09]]
+regression beta:
+ (2048, 1)
+regression train score:
+ 0.16586241293323262
+regression running time:
+ 3.1977241039276123
+regression result:  (2550, 1)
+regression score: 

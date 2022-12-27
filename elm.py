@@ -14,7 +14,7 @@ class elm():
         Parameters:
         shape: list, shape[hidden units, output units]
             numbers of hidden units and output units
-        activation_function: str, 'sigmoid', 'relu', 'sin', 'tanh', or 'leaky_relu'
+        activation_function: str, 'sigmoid', 'relu', 'sin', 'tanh', 'leaky_relu', 'swish' or 'tanh' 
             Activation function of neurons
         x: array, shape[samples, features]
             training inputs
@@ -37,6 +37,14 @@ class elm():
         self.x = x
         self.y = y
         self.C = C
+        option_dict = {}
+        option_dict['elm_type'] = elm_type
+        option_dict['random_type'] = random_type
+        option_dict['activation_function'] = activation_function
+        option_dict['hidden_units'] = hidden_units
+        option_dict['C'] = C
+        option_dict['one_hot']=one_hot
+        self.option_dict = option_dict
         if elm_type == 'clf':
             self.output_dim = np.unique(self.y).shape[0]
         elif elm_type == 'reg':
@@ -65,10 +73,13 @@ class elm():
             self.act_func = lambda x: 1/(1+np.exp(-x))
         if self.activation_function =='relu':
             self.act_func = lambda x: x * (x>0)
-        if self.activation_function == 'sin':
+        if self.activation_function == 'tanh':
             self.act_func = lambda x: (np.exp(x)- np.exp(-x))/(np.exp(x)+np.exp(-x))
         if self.activation_function == 'leaky_relu':
-            self.act_func = lambda x: np.max(0, x) + 0.1* np.min(0, x)
+            self.act_func = lambda x: ((x > 0) * x)  +((x <= 0) * x * 0.01) 
+        if self.activation_function == 'swish':
+            self.act_func = lambda x: x/(1+np.exp(-x)) 
+
             
     # This function computes the output of hidden layer
     # according to different activation function.
