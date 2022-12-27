@@ -1,7 +1,10 @@
 import numpy as np
 from scipy.linalg import pinv2, inv
 import time
-
+from autograd import grad
+from autograd import elementwise_grad as egrad
+import autograd.numpy as np
+from autograd import jacobian
 class elm():
     
     def __init__(self, x,y,C,elm_type='reg',one_hot = False,hidden_units=[50,1], activation_function='sin',random_type='normal'):
@@ -37,7 +40,9 @@ class elm():
         if elm_type == 'clf':
             self.output_dim = np.unique(self.y).shape[0]
         elif elm_type == 'reg':
-            self.output_dim = self.y.shape[0]
+            self.output_dim = self.y.shape[1]
+        elif elm_type == 'pde':
+            self.output_dim = self.y.shape[1]
         # weight matrix beta is initialized as the zero matrix.
         self.beta = np.zeros((self.hidden_units, self.output_dim))
         self.one_hot = one_hot
@@ -57,22 +62,56 @@ class elm():
         if self.random_type =='normal':
             self.W = np.random.normal(loc=0, scale=0.5, size=(self.hidden_units, self.x.shape[1]))
             self.b = np.random.normal(loc=0, scale=0.5, size=(self.hidden_units, 1))
-        
+        if self.activation_function == 'sigmoid':
+            self.act_func = lambda x: 1/(1+np.exp(-x))
+        if self.activation_function =='relu':
+            self.act_func = lambda x: x * (x>0)
+        if self.activation_function == 'sin':
+            self.act_func = lambda x: (np.exp(x)- np.exp(-x))/(np.exp(x)+np.exp(-x))
+        if self.activation_function == 'leaky_relu':
+            self.act_func = lambda x: np.max(0, x) + 0.1* np.min(0, x)
+            
     # This function computes the output of hidden layer
     # according to different activation function.
     def __input2hidden(self, x):
-        self.temH = np.dot(self.W, x.T) + self.b
-
-        if self.activation_function == 'sigmoid':
-            self.H = 1/(1+np.exp(- self.temH))
+        if (self.elm_type =='clf') or (self.elm_type =='reg'):
+            self.temH = np.dot(self.W, x.T) + self.b    
+            H = self.act_func(self.temH)
+            return H
+        elif self.elm_type == 'pde':
+            def g(x,t):
+                
+                XT = np.concatenate([x,t],axis=0)
+                res = np.dot(self.W, XT) + self.b   
+                print('g_res:',res.shape)
+                return self.act_func(res) 
             
-        if self.activation_function =='relu':
-            self.H = self.temH * (self.temH>0)
-        if self.activation_function == 'sin':
-            self.H = (np.exp(self.temH)- np.exp(-self.temH))/(np.exp(self.temH)+np.exp(-self.temH))
-        if self.activation_function == 'leaky_relu':
-            self.H = np.max(0, self.temH) + 0.1* np.min(0, self.temH)
-        return self.H
+            def f(X,T):
+                
+                X_ones = np.ones_like(X)
+                X_zeros = np.zeros_like(X)
+                T_zeros = np.zeros_like(T)
+                res = g(X,T)+(X-1)*g(X_zeros,T)-X*g(X_ones,T)- X*g(X_zeros,T_zeros)\
+                        + X*g(X_ones,T_zeros)-g(X,T_zeros)+ g(X_zeros,T_zeros)+np.sin(np.pi*X)
+                print('f_res:',res.shape)
+                return res
+            def residual_(x,t):
+                print('x.shape',x.shape)
+                print('t.shape',t.shape)
+                print('f(x,t).shape',f(x,t).shape)
+                F_xx = egrad(egrad(f,0),0)(x,t)
+                print("F_xx.shape",F_xx.shape)
+                F_t = egrad(f,1)(x,t)
+                print("F_t.shape",F_t.shape)
+
+                res = F_xx -F_t
+                print("residual shape",res.shape)
+                return res
+            # residual = np.vectorize(residual_,signature='(n,1),(n,1)->(32,n)')
+            X = x[:,0][None,:]
+            T = x[:,1][None,:]
+            
+            return residual_(X,T)
     
     # This function compute the output.
     def __hidden2output(self, H):
@@ -104,11 +143,15 @@ class elm():
                 self.y_temp = self.one_hot_label
             else:
                 self.y_temp = self.y
-        if self.elm_type == 'reg':
+        else:
             self.y_temp = self.y
         # no regularization
         if algorithm == 'no_re':
-            self.beta = np.dot(pinv2(self.H.T), self.y_temp)
+            if self.elm_type == 'pde':
+                self.beta = np.dot(pinv2(self.H.T),self.y_temp)
+
+            else:
+                self.beta = np.dot(pinv2(self.H.T), self.y_temp)
         # faster algorithm 1
         if algorithm == 'solution1':
             self.tmp1 = inv(np.eye(self.H.shape[0])/self.C +np.dot(self.H, self.H.T))
@@ -144,6 +187,8 @@ class elm():
                 np.sum(
                     (self.result - self.y)*(self.result-self.y)/self.y.shape[0])
             )
+        if self.elm_type == 'pde':
+            self.train_score = None
         train_time = str(self.time2- self.time1)
         return self.beta, self.train_score, train_time
 
