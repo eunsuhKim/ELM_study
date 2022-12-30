@@ -4,11 +4,13 @@ import time
 import jax.numpy as jnp
 from jax import jacfwd
 
+
 class elm():
     
     def __init__(self, x,y,C,physic_param = None,elm_type='reg',
                 one_hot = False,hidden_units=32, activation_function='sin',
-                random_type='normal',de_name=None, tau = None,history_func = None):
+                random_type='normal',de_name=None, tau = None,history_func = None,
+                random_seed=None,Wscale=None,bscale=None):
         '''
         Function: elm class init
         -------------------------
@@ -42,6 +44,9 @@ class elm():
         option_dict['physics_param']=physic_param
         option_dict['de_name']=de_name
         option_dict['tau']=tau
+        self.random_seed = random_seed
+        np.random.seed(random_seed)
+        print('Random seed: ',random_seed)
         self.option_dict = option_dict
         self.hidden_units = hidden_units
         self.activation_function = activation_function
@@ -79,8 +84,7 @@ class elm():
             self.W = np.random.uniform(low=0,high = 10, size=(self.hidden_units, self.input_dim))
             self.b = np.random.uniform(low = 0, high = 10, size = (self.hidden_units, 1))
         if self.random_type =='normal':
-            Wscale = 5.0
-            bscale = 0.01
+
             print("W scale:",Wscale)
             print("b scale:",bscale)
             self.W = np.random.normal(loc=0, scale=Wscale, size=(self.hidden_units, self.input_dim))

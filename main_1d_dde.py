@@ -1,7 +1,7 @@
 #%%
-from elm_direct_physics import elm
+from elm_direct_physics_dde import elm
 import numpy as np
-
+import time
 
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import make_regression
@@ -94,11 +94,13 @@ plt.grid()
 plt.legend()
 plt.show()
 #%%
-
-N_colloc = 10000
-
-# ts_ = np.random.uniform(tl,tr,N_colloc).reshape(-1,1)
-ts_ = np.linspace(tl,tr,N_colloc).reshape(-1,1)
+seed = time.time()
+print('Colloc random seed:',int(seed))
+np.random.seed(int(seed))
+N_colloc = 5000
+print('N_colloc: ',N_colloc)
+ts_ = np.random.uniform(tl,tr,N_colloc).reshape(-1,1)
+# ts_ = np.linspace(tl,tr,N_colloc).reshape(-1,1)
 X_colloc = ts_
 
 U_colloc = np.zeros_like(X_colloc)
@@ -125,15 +127,16 @@ else:
     opt_num = 0
     act_func = 'sin'
 model = elm(x= X_colloc, y=U_colloc, C = options[opt_num]['C'],
-            hidden_units=50, activation_function=act_func,
+            hidden_units=500, activation_function=act_func,
             random_type='normal', elm_type='de',de_name='dde_logistic',
             history_func=initial_history_func,
-            physic_param = [a], tau=tau)
+            physic_param = [a], tau=tau,
+            random_seed = int(time.time()),Wscale=50, bscale=0.01)
 if is_py:
     sys.stdout = open("logs/"+model.elm_type+"_"+model.de_name+f"_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
 print("model options: ",model.option_dict)
 beta, train_score, running_time = model.fit(algorithm=options[opt_num]['alg'],
-                                            num_iter = 10)#'no_re','solution1'
+                                            num_iter = 100)#'no_re','solution1'
 print("learned beta:\n", beta)
 print("learned beta shape:\n", beta.shape)
 print("test score:\n", train_score)

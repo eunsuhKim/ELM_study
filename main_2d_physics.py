@@ -14,7 +14,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 #%%
-is_py = True
+is_py = False
 
 
 
