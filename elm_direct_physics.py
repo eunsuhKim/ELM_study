@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.linalg import inv
 import time
+import jax.numpy as jnp
+from jax import grad
 # from autograd import grad
 # from autograd import elementwise_grad as egrad
 # import autograd.numpy as np
@@ -162,14 +164,31 @@ class elm():
             self.y_temp = (np.pi**2)*np.sin(np.pi*X)
             return expr_physics
 
-        if self.de_name == 'dde_logistic':
-            a = self.physics_param[0]
-            T = x[:,0:1].reshape(1,-1)
-            sig = self.__sigma(T)
-            sig_delay = self.__sigma(T-self.tau)
-            sig_t = self.W*self.__sigma_p(T)
-            expr_physics = sig_t - a* sig*(1-sig_delay)
-            return expr_physics
+    def __make_beta(self,num_iter = 10):
+        betaT0 = jnp.ones((self.x.shape[1],self.hidden_units))
+        a = self.physics_param[0]
+        T = self.x[:,0:1].reshape(1,-1) # 1 x sample_size
+        sig = self.__sigma(T) # hidden_units x sample_size
+        sig_delay = self.__sigma(T-self.tau) # hidden_units x sample_size
+        sig_t = self.W*self.__sigma_p(T) # hidden_units x sample_size
+        def N(betaT): # betaT has shape (output_dim x hidden_units)
+            if self.de_name == 'dde_logistic':
+                # Nonlinear w.r.t. beta
+                expr_physics = betaT@sig_t - a* betaT@sig*(1-betaT@sig_delay)
+                return expr_physics
+        J = grad(N)
+        betaT = betaT0
+        betaT_ = betaT0.reshape(self.x.shape[1]*self.hidden_units,1)
+        start = time.time()
+        for i in range(num_iter):
+            J_ = J(betaT).reshape(self.output_dim*self.x.shape[0],
+                                self.x.shape[1]*self.hidden_units)
+            deltay_ = -N(betaT).reshape(self.x.shape[1]*self.x.shape[0],1)
+            delta_beta_ = jnp.linalg.solve(J_.T@J_,J_.T@deltay_)
+            betaT = betaT + delta_beta_.reshape(self.x.shape[1],self.hidden_units)
+            betaT_ = betaT_ + delta_beta_
+        print(time.time()-start,' seconds cost for nonlinear least square.')
+        return betaT.T
 
     def __constrained_expression(self, x):
         if self.de_name == 'heat_diff':
@@ -220,7 +239,10 @@ class elm():
         # no regularization
         if algorithm == 'no_re':
             if self.elm_type == 'de':
-                self.beta = np.dot(np.linalg.pinv(self.H_physics.T),self.y_temp.T)
+                if self.de_name == 'heat_diff':
+                    self.beta = np.dot(np.linalg.pinv(self.H_physics.T),self.y_temp.T)
+                if self.de_name == 'dde_logistic':
+                    self.beta = self.__make_beta(num_iter = 10)
 
             else:
                 # self.beta = np.dot(pinv2(self.H.T), self.y_temp)
