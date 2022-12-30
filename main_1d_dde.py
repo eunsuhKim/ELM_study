@@ -14,7 +14,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 #%%
-is_py = True
+is_py = False
 
 
 
@@ -23,32 +23,53 @@ stdsc = StandardScaler()
 
 # Linear Bivariate PDE 
 
-print("Linear PDE problem (heat-diffusion)>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("Nonlinear DDE Logistic >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 # load test dataset
 
-kappa = 3.0
-
-file = loadmat(f"heat_diffusion_kappa_{kappa}.mat")
-xs = file['x']
-ts = file['t']
-Us = file['usol']
-Xs, Ts = np.meshgrid(xs,ts)
-X_test = np.concatenate([Xs.reshape(-1,1),Ts.reshape(-1,1)], axis = 1)
-U_test = Us.reshape(-1,1)
 
 # Make collocation points
-xl = 0.0
-xr = 1.0
+a =1.4 #0.3 
+tau = 1.5#0.0
+
 tl = 0.0
-tr = 1.0
+tr = 50.0
+num_test_pts = 10000
+y0 = 0.1
+from ddeint import ddeint
+
+
+def equation(Y, t):
+    return a*Y(t)*(1-Y(t - tau))
+
+def initial_history_func(t):
+    return y0*np.ones_like(t)
+
+
+plt.rcParams['font.size'] = 15
+fig = plt.figure(figsize=(10,8),facecolor='white')
+fig.tight_layout(rect=[0, 0, 1, 0.95], pad=3.0)
+plt.title(f"$y'(t)=y(t)(1-y(t-{tau}))$ solved by ddeint")
+
+ts = np.linspace(tl, tr, num_test_pts)
+
+ys_ = ddeint(equation, initial_history_func, ts)
+ys = [ys_[0]]
+for i in range(1,len(ys_)):
+    ys.append(ys_[i][0])
+
+
+plt.plot(ts, ys_, color='blue',linestyle='--' ,linewidth=1,label='ddeint')
+plt.grid()
+plt.legend()
+plt.show()
+#%%
 
 N_colloc = 200
 
-xs_ = np.random.uniform(xl,xr,N_colloc).reshape(-1,1)
 ts_ = np.random.uniform(tl,tr,N_colloc).reshape(-1,1)
-X_colloc = np.concatenate([xs_,ts_], axis = 1)
+X_colloc = ts_
 
-U_colloc = np.sin(np.pi*xs_)*np.exp(-np.pi**2/kappa* ts_)#np.zeros((N_colloc,1))
+U_colloc = ~~~~~
 
 #%%
 # build model and train
@@ -71,11 +92,12 @@ else:
     opt_num = 0
     act_func = 'tanh'
 model = elm(x= X_colloc, y=U_colloc, C = options[opt_num]['C'],
-                hidden_units=128, activation_function=act_func,
-                random_type='normal', elm_type='pde',
-                physic_param = [kappa])
+            hidden_units=128, activation_function=act_func,
+            random_type='normal', elm_type='de',de_name='dde_logistic',
+            history_func=initial_history_func,
+            physic_param = [a])
 if is_py:
-    sys.stdout = open(f"logs/2d_pde_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
+    sys.stdout = open("logs/2d_"+model.elm_type+"_"+model.de_name+f"_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
 print("model options: ",model.option_dict)
 beta, train_score, running_time = model.fit(options[opt_num]['alg'])#'no_re','solution1'
 print("learned beta:\n", beta)
@@ -113,7 +135,7 @@ plt.colorbar()
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
 plt.show()
-plt.savefig("figure/2d_"+model.elm_type+f"_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+plt.savefig("figure/2d_"+model.elm_type+"_"+model.de_name+f"_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 
 
 
@@ -135,6 +157,6 @@ for i in range(0,len(t_snap)):
     
     plt.ylim([0,1.05])
 plt.show()
-plt.savefig("figure/2d_"+model.elm_type+f"_result_method_{opt_num}_act_func_{model.activation_function}_(snapshot).pdf")
+plt.savefig("figure/2d_"+model.elm_type+"_"+model.de_name+f"_result_method_{opt_num}_act_func_{model.activation_function}_(snapshot).pdf")
 
 # %%

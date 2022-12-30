@@ -7,7 +7,9 @@ import time
 # from autograd import jacobian
 class elm():
     
-    def __init__(self, x,y,C,physic_param = None,elm_type='reg',one_hot = False,hidden_units=32, activation_function='sin',random_type='normal'):
+    def __init__(self, x,y,C,physic_param = None,elm_type='reg',
+                one_hot = False,hidden_units=32, activation_function='sin',
+                random_type='normal',de_name=None, tau = None,history_func = None):
         '''
         Function: elm class init
         -------------------------
@@ -39,11 +41,15 @@ class elm():
         option_dict['C'] = C
         option_dict['one_hot']=one_hot
         option_dict['physics_param']=physic_param
+        option_dict['de_name']=de_name
+        option_dict['tau']=tau
         self.option_dict = option_dict
         self.hidden_units = hidden_units
         self.activation_function = activation_function
         self.random_type = random_type
         self.physics_param = physic_param
+        self.de_name=de_name
+        self.history_func = history_func
         self.x = x
         self.y = y
         self.C = C
@@ -51,12 +57,14 @@ class elm():
             self.output_dim = np.unique(self.y).shape[0]
         elif elm_type == 'reg':
             self.output_dim = self.y.shape[1]
-        elif elm_type == 'pde':
+        elif elm_type == 'de':
             self.output_dim = self.y.shape[1]
         # weight matrix beta is initialized as the zero matrix.
         self.beta = np.zeros((self.hidden_units, self.output_dim))
         self.one_hot = one_hot
         self.elm_type = elm_type
+        if de_name == 'dde_logistic':
+            self.tau = tau
 
         # if classification problem and one_hot == True
         if elm_type =='clf' and self.one_hot:
@@ -106,54 +114,81 @@ class elm():
     def __hidden2residualscore(self,H_physics):
         self.output = np.dot(self.beta.T,H_physics)
         return np.mean(np.abs(self.output-self.y_temp))
-    def __sigma(self,X,T):
-        x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+
+    def __sigma(self,X,T=None):
+        if self.x.shape[1] == 2:
+            x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+        elif self.x.shape[1] == 1:
+            x = X
         self.temH = np.dot(self.W, x) + self.b    
         H = self.act_func(self.temH)
         return H
-    def __sigma_p(self,X,T):
-        x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+    def __sigma_p(self,X,T=None):
+        if self.x.shape[1] == 2:
+            x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+        elif self.x.shape[1] == 1:
+            x = X
         self.temH = np.dot(self.W, x) + self.b    
         H = self.act_func_p(self.temH)
         return H
-    def __sigma_pp(self,X,T):
-        x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+    def __sigma_pp(self,X,T=None):
+        if self.x.shape[1] == 2:
+            x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+        elif self.x.shape[1] == 1:
+            x = X
         self.temH = np.dot(self.W, x) + self.b    
         H = self.act_func_pp(self.temH)
         return H
-
+    def history_func(self,t):
+        if self.de_name == 'dde_logistic':
+            return 0.1*np.ones_like(t) 
     def __input2physics(self,x): # x has size of [sample_size x input_dim]
-        
-        kappa = self.physics_param[0]
-        X = x[:,0:1].reshape(1,-1) # 1 x sample_size
-        T = x[:,1:2].reshape(1,-1) # 1 x sample_size
-        Wx = self.W[:,0:1] # hidden_units x 1
-        Wt = self.W[:,1:2] # hidden_units x 1
-        sig_xx = (Wx**2)*self.__sigma_pp(X,T)
-        sig_xx_t0 = (Wx**2)*self.__sigma_pp(X,np.zeros_like(T))
-        sig_t = Wt*self.__sigma_p(X,T)
-        sig_t_x0 = Wt*self.__sigma_p(np.zeros_like(X),T)
-        sig_t_x1 = Wt*self.__sigma_p(np.ones_like(X),T)
+        if self.de_name == 'heat_diff':
+            kappa = self.physics_param[0]
+            X = x[:,0:1].reshape(1,-1) # 1 x sample_size
+            T = x[:,1:2].reshape(1,-1) # 1 x sample_size
+            Wx = self.W[:,0:1] # hidden_units x 1
+            Wt = self.W[:,1:2] # hidden_units x 1
+            sig_xx = (Wx**2)*self.__sigma_pp(X,T)
+            sig_xx_t0 = (Wx**2)*self.__sigma_pp(X,np.zeros_like(T))
+            sig_t = Wt*self.__sigma_p(X,T)
+            sig_t_x0 = Wt*self.__sigma_p(np.zeros_like(X),T)
+            sig_t_x1 = Wt*self.__sigma_p(np.ones_like(X),T)
 
-        f_xx = sig_xx  - sig_xx_t0
-        f_t = sig_t +(X-1)*sig_t_x0 - (X)*sig_t_x1
+            f_xx = sig_xx  - sig_xx_t0
+            f_t = sig_t +(X-1)*sig_t_x0 - (X)*sig_t_x1
 
-        expr_physics = f_xx - kappa*f_t
-        self.y_temp = (np.pi**2)*np.sin(np.pi*X)
-        return expr_physics
+            expr_physics = f_xx - kappa*f_t
+            self.y_temp = (np.pi**2)*np.sin(np.pi*X)
+            return expr_physics
+
+        if self.de_name == 'dde_logistic':
+            a = self.physics_param[0]
+            T = x[:,0:1].reshape(1,-1)
+            sig = self.__sigma(T)
+            sig_delay = self.__sigma(T-self.tau)
+            sig_t = self.W*self.__sigma_p(T)
+            expr_physics = sig_t - a* sig*(1-sig_delay)
+            return expr_physics
 
     def __constrained_expression(self, x):
-        X = x[:,0:1].reshape(1,-1) # 1 x sample_size
-        T = x[:,1:2].reshape(1,-1) # 1 x sample_size
-        X0 = np.zeros_like(X)
-        T0 = np.zeros_like(T)
-        X1 = np.ones_like(X)
-        def g(X,T):
-            sig_xt = self.__sigma(X,T)
-            return np.matmul(self.beta.T,sig_xt) # beta has shape [hidden_units x output_dim]
-        expr_result = g(X,T)+(X-1)*g(X0,T)- X*g(X1,T)-X*g(X0,T0)+X*g(X1,T0)\
-                    -g(X,T0) + g(X0,T0) +np.sin(np.pi*X)
-        return expr_result.T
+        if self.de_name == 'heat_diff':
+            X = x[:,0:1].reshape(1,-1) # 1 x sample_size
+            T = x[:,1:2].reshape(1,-1) # 1 x sample_size
+            X0 = np.zeros_like(X)
+            T0 = np.zeros_like(T)
+            X1 = np.ones_like(X)
+            def g(X,T):
+                sig_xt = self.__sigma(X,T)
+                return np.matmul(self.beta.T,sig_xt) # beta has shape [hidden_units x output_dim]
+            expr_result = g(X,T)+(X-1)*g(X0,T)- X*g(X1,T)-X*g(X0,T0)+X*g(X1,T0)\
+                        -g(X,T0) + g(X0,T0) +np.sin(np.pi*X)
+            return expr_result.T
+        if self.de_name == 'dde_logistic':
+            T = x[:,0:1].reshape(1,-1)
+            expr_result = (T<0)*self.history_func(T)+(T>=0)*self.__sigma(T)
+            return expr_result.T
+
     def fit(self, algorithm):
         '''
         Function: Triain the model, compute beta matrix, 
@@ -184,7 +219,7 @@ class elm():
             self.y_temp = self.y
         # no regularization
         if algorithm == 'no_re':
-            if self.elm_type == 'pde':
+            if self.elm_type == 'de':
                 self.beta = np.dot(np.linalg.pinv(self.H_physics.T),self.y_temp.T)
 
             else:
@@ -192,7 +227,7 @@ class elm():
                 self.beta = np.dot(np.linalg.pinv(self.H.T), self.y_temp)
         # faster algorithm 1
         if algorithm == 'solution1':
-            if self.elm_type == 'pde':
+            if self.elm_type == 'de':
                 self.tmp1 = inv(np.eye(self.H_physics.shape[0])/self.C +np.dot(self.H_physics, self.H_physics.T))
                 self.tmp2 = np.dot(self.tmp1, self.H_physics)
                 self.beta = np.dot(self.tmp2, self.y_temp.T)
@@ -203,7 +238,7 @@ class elm():
 
         # faster algorithm 2
         if algorithm == 'solution2':
-            if self.elm_type == 'pde':
+            if self.elm_type == 'de':
                 self.tmp1 = inv(np.eye(self.H_physics.shape[0])/self.C + np.dot(self.H_physics, self.H_physics.T))
                 self.tmp2 = np.dot(self.H_physics.T, self.tmp1)
                 self.beta = np.dot(self.tmp2.T, self.y_temp.T)
@@ -214,7 +249,7 @@ class elm():
         self.time2 = time.time()
 
         # comput the results
-        if self.elm_type =='pde':
+        if self.elm_type =='de':
             self.result = self.predict(self.x)
         else:
             self.result = self.__hidden2output(self.H)
@@ -238,7 +273,7 @@ class elm():
                 np.sum(
                     (self.result - self.y)*(self.result-self.y)/self.y.shape[0])
             )
-        if self.elm_type == 'pde':
+        if self.elm_type == 'de':
             self.train_score = self.__hidden2residualscore(self.H_physics)
         train_time = str(self.time2- self.time1)
         return self.beta, self.train_score, train_time
@@ -255,7 +290,7 @@ class elm():
         y_ : array
             predicted results
         '''
-        if self.elm_type =='pde':
+        if self.elm_type =='de':
             f_val = self.__constrained_expression(x)
             return f_val 
         else:
@@ -287,7 +322,7 @@ class elm():
                 if self.prediction[i] == y[i]:
                     self.correct = self.correct + 1
             self.test_score = self.correct/ y.shape[0]
-        if (self.elm_type == 'reg') or (self.elm_type == 'pde'):
+        if (self.elm_type == 'reg') or (self.elm_type == 'de'):
             print("here")
             self.test_score = np.sqrt(
                 np.sum(
