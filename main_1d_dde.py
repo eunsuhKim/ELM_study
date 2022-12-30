@@ -29,7 +29,7 @@ print("Nonlinear DDE Logistic >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
 # Make collocation points
 a =1.4 #0.3 
-tau = 1.5#0.0
+tau = 1.0#0.0
 
 tl = 0.0
 tr = 50.0
@@ -74,6 +74,13 @@ plt.show()
 
 X_test = ts.reshape(-1,1)
 U_test = ys_.reshape(-1,1)
+
+#%%
+from scipy.io import savemat
+saving_dict = {}
+saving_dict['t'] = X_test
+saving_dict['u'] = U_test
+savemat(f"dataset/dde_logistic_{a}_{tau}_.mat",saving_dict)
 
 #%%
 
