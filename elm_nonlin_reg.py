@@ -63,6 +63,8 @@ class elm():
             self.output_dim = np.unique(self.y).shape[0]
         elif elm_type == 'reg':
             self.output_dim = self.y.shape[1]
+        elif elm_type == 'nonlin_reg':
+            self.output_dim = self.y.shape[1]
         elif elm_type == 'de':
             self.output_dim = self.y.shape[1]
         # weight matrix beta is initialized as the zero matrix.
@@ -172,45 +174,68 @@ class elm():
             return expr_physics
 
     def __make_beta(self,num_iter = 10):
-        betaT0 = np.random.randn(self.input_dim,self.hidden_units)
-        betaT0 = jnp.array(betaT0)
-        a = self.physics_param[0]
-        T = self.x[:,0:1].reshape(1,-1) # 1 x sample_size
-        sig = self.__sigma(X=T) # hidden_units x sample_size
-        sig_delay = self.__sigma(X=T-self.tau) # hidden_units x sample_size
-        sig_t = self.W*self.__sigma_p(X=T) # hidden_units x sample_size
-        def N(betaT): # betaT has shape (output_dim x hidden_units)
-            if self.de_name == 'dde_logistic':
-                # Nonlinear w.r.t. beta
-                expr_physics = betaT@sig_t - a* betaT@sig*(1-betaT@sig_delay)
-                return expr_physics
-        def J_direct(betaT):
-            if self.de_name == 'dde_logistic':
-                expr_jacobian = sig_t.swapaxes(0,1)[None,:,None,:] \
-                        -a* sig.swapaxes(0,1)[None,:,None,:] \
-                        +a * sig.swapaxes(0,1)[None,:,None,:] * (betaT@sig_delay).swapaxes(0,1)[None,:,:,None] \
-                        +a*(betaT@sig).swapaxes(0,1)[None,:,:,None]* sig_delay.swapaxes(0,1)[None,:,None,:]
-                # jacobian throught manual calculation
-                return expr_jacobian
-        J = jacfwd(N) 
-        # J originally has shape (self.output_dim,self.sample_size,
-        #                           self.output_dim,self.hidden_units)
-        # real beta T with shape (self.output_dim,self.hidden_units)
-        betaT = betaT0 
-        # for solving matrix equation (J.T@J)betaT_ =J.T@deltay
-        betaT_ = betaT0.reshape(self.output_dim*self.hidden_units,1)
-        start = time.time()
-        for i in range(num_iter):
-            J_ = J_direct(betaT).reshape(self.output_dim*self.sample_size,
-                                self.output_dim*self.hidden_units)
-            deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
-            delta_beta_ = jnp.linalg.solve(J_.T@J_,J_.T@deltay_)
-            betaT = betaT + delta_beta_.reshape(self.output_dim,self.hidden_units)
-            betaT_ = betaT_ + delta_beta_
-            
-            
-        print(time.time()-start,' seconds cost for nonlinear least square.')
-        return betaT.T
+        if self.elm_type == 'nonlin_reg':
+            betaT0 = np.random.randn(self.input_dim,self.hidden_units)
+            betaT0 = jnp.array(betaT0)
+            sig = self.__sigma(X=T)
+            # sig_t = self.W*self.__sigma_p(X=T)
+            def N(betaT):
+                return (betaT@sig)*(betaT@sig_t) - self.y.reshape(self.output_dim,self.sample_size)
+            J = jacfwd(N) 
+            # J originally has shape (self.output_dim,self.sample_size,
+            #                           self.output_dim,self.hidden_units)
+            # real beta T with shape (self.output_dim,self.hidden_units)
+            betaT = betaT0 
+            # for solving matrix equation (J.T@J)betaT_ =J.T@deltay
+            betaT_ = betaT0.reshape(self.output_dim*self.hidden_units,1)
+            start = time.time()
+            for i in range(num_iter):
+                J_ = J(betaT).reshape(self.output_dim*self.sample_size,
+                                    self.output_dim*self.hidden_units)
+                deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
+                delta_beta_ = jnp.linalg.solve(J_.T@J_,J_.T@deltay_)
+                betaT = betaT + delta_beta_.reshape(self.output_dim,self.hidden_units)
+                betaT_ = betaT_ + delta_beta_
+        elif self.elm_type == 'de':
+            betaT0 = np.random.randn(self.input_dim,self.hidden_units)
+            betaT0 = jnp.array(betaT0)
+            a = self.physics_param[0]
+            T = self.x[:,0:1].reshape(1,-1) # 1 x sample_size
+            sig = self.__sigma(X=T) # hidden_units x sample_size
+            sig_delay = self.__sigma(X=T-self.tau) # hidden_units x sample_size
+            sig_t = self.W*self.__sigma_p(X=T) # hidden_units x sample_size
+            def N(betaT): # betaT has shape (output_dim x hidden_units)
+                if self.de_name == 'dde_logistic':
+                    # Nonlinear w.r.t. beta
+                    expr_physics = betaT@sig_t - a* betaT@sig*(1-betaT@sig_delay)
+                    return expr_physics
+            def J_direct(betaT):
+                if self.de_name == 'dde_logistic':
+                    expr_jacobian = sig_t.swapaxes(0,1)[None,:,None,:] \
+                            -a* sig.swapaxes(0,1)[None,:,None,:] \
+                            +a * sig.swapaxes(0,1)[None,:,None,:] * (betaT@sig_delay).swapaxes(0,1)[None,:,:,None] \
+                            +a*(betaT@sig).swapaxes(0,1)[None,:,:,None]* sig_delay.swapaxes(0,1)[None,:,None,:]
+                    # jacobian throught manual calculation
+                    return expr_jacobian
+            J = jacfwd(N) 
+            # J originally has shape (self.output_dim,self.sample_size,
+            #                           self.output_dim,self.hidden_units)
+            # real beta T with shape (self.output_dim,self.hidden_units)
+            betaT = betaT0 
+            # for solving matrix equation (J.T@J)betaT_ =J.T@deltay
+            betaT_ = betaT0.reshape(self.output_dim*self.hidden_units,1)
+            start = time.time()
+            for i in range(num_iter):
+                J_ = J_direct(betaT).reshape(self.output_dim*self.sample_size,
+                                    self.output_dim*self.hidden_units)
+                deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
+                delta_beta_ = jnp.linalg.solve(J_.T@J_,J_.T@deltay_)
+                betaT = betaT + delta_beta_.reshape(self.output_dim,self.hidden_units)
+                betaT_ = betaT_ + delta_beta_
+                
+                
+            print(time.time()-start,' seconds cost for nonlinear least square.')
+            return betaT.T
 
     def __constrained_expression(self, x):
         if self.de_name == 'heat_diff':
@@ -258,6 +283,8 @@ class elm():
                 self.y_temp = self.y
         
         if self.elm_type=='reg':
+            self.y_temp = self.y
+        if self.elm_type=='nonlin_reg':
             self.y_temp = self.y
         # no regularization
         if algorithm == 'no_re':
@@ -314,6 +341,11 @@ class elm():
                     self.correct  = self.correct + 1
             self.train_score = self.correct/ self.y.shape[0]
         if self.elm_type == 'reg':
+            self.train_score = np.sqrt(
+                np.sum(
+                    (self.result - self.y)*(self.result-self.y)/self.y.shape[0])
+            )
+        if self.elm_type == 'nonlin_reg':
             self.train_score = np.sqrt(
                 np.sum(
                     (self.result - self.y)*(self.result-self.y)/self.y.shape[0])
@@ -381,7 +413,7 @@ class elm():
                 if self.prediction[i] == y[i]:
                     self.correct = self.correct + 1
             self.test_score = self.correct/ y.shape[0]
-        if (self.elm_type == 'reg') or (self.elm_type == 'de'):
+        if (self.elm_type == 'reg') or (self.elm_type == 'de') or (self.elm_type == 'nonlin_reg'):
             print("here")
             self.test_score = np.sqrt(
                 np.sum(

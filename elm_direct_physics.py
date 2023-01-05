@@ -79,7 +79,7 @@ class elm():
             self.W = np.random.uniform(low=0,high = 10, size=(self.hidden_units, self.input_dim))
             self.b = np.random.uniform(low = 0, high = 10, size = (self.hidden_units, 1))
         if self.random_type =='normal':
-            Wscale = 5.0
+            Wscale = 1.0
             bscale = 0.01
             print("W scale:",Wscale)
             print("b scale:",bscale)
