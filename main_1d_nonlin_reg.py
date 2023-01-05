@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 #%%
-is_py = True
+is_py = False
 
 
 
@@ -81,24 +81,27 @@ else:
     opt_num = 0
     act_func = 'tanh'
 model = elm(x= xtoy, y=ytoy, C = options[opt_num]['C'],
-            hidden_units=500, activation_function=act_func,
+            hidden_units=100, activation_function=act_func,
             random_type='uniform', elm_type='nonlin_reg',
-            random_seed = int(time.time()),Wscale=10, bscale=0.01)
+            random_seed = int(time.time()),Wscale=1, bscale=0.01)
 if is_py:
     sys.stdout = open("logs/"+model.elm_type+f"_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
 #%%
 print("model options: ",model.option_dict)
 beta, train_score, running_time = model.fit(algorithm=options[opt_num]['alg'],
-                                            num_iter = 5)#'no_re','solution1'
+                                            num_iter = 20)#'no_re','solution1'
 print("learned beta mean:\n", beta.mean())
 print("learned beta shape:\n", beta.shape)
 print("test score:\n", train_score)
 print("running time:\n", running_time)
+plt.figure(figsize=(5,4))
+plt.plot(model.res_hist)
+plt.show()
 #%%
 # test
 # test
 prediction = model.predict(xtoy)
-print("regression result: ", prediction.reshape(-1,))
+print("regression result: ", prediction.reshape(-1,).shape)
 print("regression score: ",model.score(xtoy,ytoy))
 if is_py:
     sys.stdout.close()

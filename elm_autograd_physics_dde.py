@@ -1,16 +1,17 @@
-import numpy as np
+import numpy as onp
 from scipy.linalg import inv
 import time
-import jax.numpy as jnp
-from jax import jacfwd
-
+import jax.numpy as np
+import jax
+from jax import jacfwd, vmap, grad, jvp, vjp
+jax.config.update("jax_enable_x64", True)
 
 class elm():
     
     def __init__(self, x,y,C,physic_param = None,elm_type='reg',
                 one_hot = False,hidden_units=32, activation_function='sin',
                 random_type='normal',de_name=None, tau = None,history_func = None,
-                random_seed=None,Wscale=None,bscale=None):
+                random_seed=None,Wscale=None,bscale=None,fourier_embedding=False):
         '''
         Function: elm class init
         -------------------------
@@ -44,8 +45,10 @@ class elm():
         option_dict['physics_param']=physic_param
         option_dict['de_name']=de_name
         option_dict['tau']=tau
+        option_dict['random_seed'] = random_seed
+        option_dict['fourier_embedding'] =fourier_embedding
         self.random_seed = random_seed
-        np.random.seed(random_seed)
+        onp.random.seed(random_seed)
         print('Random seed: ',random_seed)
         self.option_dict = option_dict
         self.hidden_units = hidden_units
@@ -62,8 +65,6 @@ class elm():
         if elm_type == 'clf':
             self.output_dim = np.unique(self.y).shape[0]
         elif elm_type == 'reg':
-            self.output_dim = self.y.shape[1]
-        elif elm_type == 'nonlin_reg':
             self.output_dim = self.y.shape[1]
         elif elm_type == 'de':
             self.output_dim = self.y.shape[1]
@@ -83,32 +84,34 @@ class elm():
         # 'uniform': uniform distribution U(0,1)
         # 'normal': normal distribution N(0,0.5)
         if self.random_type == 'uniform':
-            self.W = np.random.uniform(low=0,high = 10, size=(self.hidden_units, self.input_dim))
-            self.b = np.random.uniform(low = 0, high = 10, size = (self.hidden_units, 1))
+            self.W = onp.random.uniform(low=0,high = 10, size=(self.hidden_units, self.input_dim))
+            self.b = onp.random.uniform(low = 0, high = 10, size = (self.hidden_units, 1))
         if self.random_type =='normal':
 
             print("W scale:",Wscale)
             print("b scale:",bscale)
-            self.W = np.random.normal(loc=0, scale=Wscale, size=(self.hidden_units, self.input_dim))
-            self.b = np.random.normal(loc=0, scale=bscale, size=(self.hidden_units, 1))
+            self.option_dict['Wscale']=Wscale
+            self.option_dict['bscale']=bscale
+            self.W = onp.random.normal(loc=0, scale=Wscale, size=(self.hidden_units, self.input_dim))
+            self.b = onp.random.normal(loc=0, scale=bscale, size=(self.hidden_units, 1))
         if self.activation_function == 'sigmoid':
             self.act_func = lambda x: 1/(1+np.exp(-x))
-            self.act_func_p = lambda x: 0.5*(np.tanh(0.5*x)+1)*(1-0.5*(np.tanh(0.5*x)+1))
-            self.act_func_pp = lambda x:0.5*(np.tanh(0.5*x)+1)*(1-0.5*(np.tanh(0.5*x)+1))*(1-(np.tanh(0.5*x)+1))
+            # self.act_func_p = lambda x: 0.5*(np.tanh(0.5*x)+1)*(1-0.5*(np.tanh(0.5*x)+1))
+            # self.act_func_pp = lambda x:0.5*(np.tanh(0.5*x)+1)*(1-0.5*(np.tanh(0.5*x)+1))*(1-(np.tanh(0.5*x)+1))
         if self.activation_function =='relu':
             self.act_func = lambda x: x * (x>0)
-            self.act_func_p = lambda x: 1.0* (x>0)
+            # self.act_func_p = lambda x: 1.0* (x>0)
         if self.activation_function == 'tanh':
-            self.act_func = lambda x: (np.exp(x)- np.exp(-x))/(np.exp(x)+np.exp(-x))
-            self.act_func_p = lambda x: 4/(np.exp(x)+np.exp(-x))**2
-            self.act_func_pp = lambda x:-8*(np.exp(x)-np.exp(-x))/(np.exp(x)+np.exp(-x))**3
+            self.act_func = lambda x: np.tanh(x)#(np.exp(x)- np.exp(-x))/(np.exp(x)+np.exp(-x))
+            # self.act_func_p = lambda x: 1/(np.cos(x)**2)#4/(np.exp(x)+np.exp(-x))**2
+            # self.act_func_pp = lambda x:2*np.tanh(x)/(np.cosh(x)**2)#-8*(np.exp(x)-np.exp(-x))/(np.exp(x)+np.exp(-x))**3
         if self.activation_function == 'leaky_relu':
             self.act_func = lambda x: x*(x>0)+0.1*x*(x<0)#np.max(0, x) + 0.1* np.min(0, x)
-            self.act_func_p = lambda x: 0.1*(x<=0)+1.0*(x>0)   
+            # self.act_func_p = lambda x: 0.1*(x<=0)+1.0*(x>0)   
         if self.activation_function == 'sin':
             self.act_func = lambda x: np.sin(x)         
-            self.act_func_p = lambda x: np.cos(x)         
-            self.act_func_pp = lambda x: -np.sin(x)         
+            # self.act_func_p = lambda x: np.cos(x)         
+            # self.act_func_pp = lambda x: -np.sin(x)         
     # This function computes the output of hidden layer
     # according to different activation function.
     def __input2hidden(self, x):
@@ -131,25 +134,28 @@ class elm():
             x = np.concatenate([X,T],axis=0) # input_dim x sample_size
         elif self.input_dim == 1:
             x = X
-        self.temH = np.matmul(self.W, x) + self.b    
+            x = x/self.x.std()
+        self.temH = np.matmul(self.W, x.reshape(1,-1)) + self.b    
         H = self.act_func(self.temH)
         return H
-    def __sigma_p(self,X,T=None):
-        if self.input_dim == 2:
-            x = np.concatenate([X,T],axis=0) # input_dim x sample_size
-        elif self.input_dim == 1:
-            x = X
-        self.temH = np.dot(self.W, x) + self.b    
-        H = self.act_func_p(self.temH)
-        return H
-    def __sigma_pp(self,X,T=None):
-        if self.input_dim == 2:
-            x = np.concatenate([X,T],axis=0) # input_dim x sample_size
-        elif self.input_dim == 1:
-            x = X
-        self.temH = np.dot(self.W, x) + self.b    
-        H = self.act_func_pp(self.temH)
-        return H
+    # def __sigma_p(self,X,T=None):
+    #     if self.input_dim == 2:
+    #         x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+    #     elif self.input_dim == 1:
+    #         x = X
+    #         x = x/self.x.std()
+    #     self.temH = np.dot(self.W, x) + self.b    
+    #     H = self.act_func_p(self.temH)
+    #     return H
+    # def __sigma_pp(self,X,T=None):
+    #     if self.input_dim == 2:
+    #         x = np.concatenate([X,T],axis=0) # input_dim x sample_size
+    #     elif self.input_dim == 1:
+    #         x = X
+    #         x = x/self.x.std()
+    #     self.temH = np.dot(self.W, x) + self.b    
+    #     H = self.act_func_pp(self.temH)
+    #     return H
     def history_func(self,t):
         if self.de_name == 'dde_logistic':
             return 0.1*np.ones_like(t) 
@@ -174,77 +180,61 @@ class elm():
             return expr_physics
 
     def __make_beta(self,num_iter = 10):
-        if self.elm_type == 'nonlin_reg':
-            betaT0 = np.random.randn(self.input_dim,self.hidden_units)
-            betaT0 = jnp.array(betaT0)
-            T = self.x[:,0:1].reshape(1,-1) # 1 x sample_size
-            sig = self.__sigma(X=T)
-            sig_t = self.W*self.__sigma_p(X=T)
-            def N(betaT):
-                return (betaT@sig)*(betaT@sig_t) - self.y.reshape(self.output_dim,self.sample_size)
-            self.N = N
-            J = jacfwd(N) 
-            # J originally has shape (self.output_dim,self.sample_size,
-            #                           self.output_dim,self.hidden_units)
-            # real beta T with shape (self.output_dim,self.hidden_units)
-            betaT = betaT0 
-            # for solving matrix equation (J.T@J)betaT_ =J.T@deltay
-            betaT_ = betaT0.reshape(self.output_dim*self.hidden_units,1)
-            self.res_hist = []
-            start = time.time()
-            for i in range(num_iter):
-                J_ = J(betaT).reshape(self.output_dim*self.sample_size,
-                                    self.output_dim*self.hidden_units)
-                deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
-                delta_beta_ = jnp.linalg.solve(J_.T@J_,J_.T@deltay_)
-                betaT = betaT + delta_beta_.reshape(self.output_dim,self.hidden_units)
-                betaT_ = betaT_ + delta_beta_
-                train_score = np.mean(np.abs(self.N(betaT)))
-            self.res_hist.append(train_score)
-            print(f'Train_score when iter={i}: {train_score:.7f}')
+        betaT0 = onp.random.randn(self.input_dim,self.hidden_units)
+        betaT0 = np.array(betaT0)
         
-                
-        elif self.elm_type == 'de':
-            betaT0 = np.random.randn(self.input_dim,self.hidden_units)
-            betaT0 = jnp.array(betaT0)
-            a = self.physics_param[0]
-            T = self.x[:,0:1].reshape(1,-1) # 1 x sample_size
-            sig = self.__sigma(X=T) # hidden_units x sample_size
-            sig_delay = self.__sigma(X=T-self.tau) # hidden_units x sample_size
-            sig_t = self.W*self.__sigma_p(X=T) # hidden_units x sample_size
-            def N(betaT): # betaT has shape (output_dim x hidden_units)
-                if self.de_name == 'dde_logistic':
-                    # Nonlinear w.r.t. beta
-                    expr_physics = betaT@sig_t - a* betaT@sig*(1-betaT@sig_delay)
-                    return expr_physics
-            self.N = N
-            def J_direct(betaT):
-                if self.de_name == 'dde_logistic':
-                    expr_jacobian = sig_t.swapaxes(0,1)[None,:,None,:] \
-                            -a* sig.swapaxes(0,1)[None,:,None,:] \
-                            +a * sig.swapaxes(0,1)[None,:,None,:] * (betaT@sig_delay).swapaxes(0,1)[None,:,:,None] \
-                            +a*(betaT@sig).swapaxes(0,1)[None,:,:,None]* sig_delay.swapaxes(0,1)[None,:,None,:]
-                    # jacobian throught manual calculation
-                    return expr_jacobian
-            J = jacfwd(N) 
-            # J originally has shape (self.output_dim,self.sample_size,
-            #                           self.output_dim,self.hidden_units)
-            # real beta T with shape (self.output_dim,self.hidden_units)
-            betaT = betaT0 
-            # for solving matrix equation (J.T@J)betaT_ =J.T@deltay
-            betaT_ = betaT0.reshape(self.output_dim*self.hidden_units,1)
-            start = time.time()
-            for i in range(num_iter):
-                J_ = J_direct(betaT).reshape(self.output_dim*self.sample_size,
-                                    self.output_dim*self.hidden_units)
-                deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
-                delta_beta_ = jnp.linalg.solve(J_.T@J_,J_.T@deltay_)
-                betaT = betaT + delta_beta_.reshape(self.output_dim,self.hidden_units)
-                betaT_ = betaT_ + delta_beta_
-                
-                
-            print(time.time()-start,' seconds cost for nonlinear least square.')
-            return betaT.T
+        a = self.physics_param[0]
+        T = self.x[:,0:1].reshape(1,-1) # 1 x sample_size
+        # sig = self.__sigma(X=T) # hidden_units x sample_size
+        # sig_delay = self.__sigma(X=T-self.tau) # hidden_units x sample_size
+        # sig_t = self.W*self.__sigma_p(X=T) # hidden_units x sample_size
+        # sig_t = sig_t/(self.x.std())
+        
+        def N(betaT): # betaT has shape (output_dim x hidden_units)
+            if self.de_name == 'dde_logistic':
+                # Nonlinear w.r.t. beta
+                def warpper_func(T):
+                    return (betaT@(self.__sigma(X = T)))[0,0]
+                u = betaT @ self.__sigma(X = T)
+                u_delay= betaT @ self.__sigma(X=T-self.tau)
+                u_p = grad(warpper_func)
+                u_p_vmap = vmap(u_p,in_axes=1,out_axes=1)
+                u_t = u_p_vmap(T)
+                expr_physics = u_t - a*u*(1-u_delay)
+                return expr_physics
+        self.N = N
+        # def J_direct(betaT):
+        #     if self.de_name == 'dde_logistic':
+        #         expr_jacobian = sig_t.swapaxes(0,1)[None,:,None,:] \
+        #                 -a* sig.swapaxes(0,1)[None,:,None,:] \
+        #                 +a * sig.swapaxes(0,1)[None,:,None,:] * (betaT@sig_delay).swapaxes(0,1)[None,:,:,None] \
+        #                 +a*(betaT@sig).swapaxes(0,1)[None,:,:,None]* sig_delay.swapaxes(0,1)[None,:,None,:]
+        #         # jacobian throught manual calculation
+        #         return expr_jacobian
+        J = jacfwd(N) 
+        # J originally has shape (self.output_dim,self.sample_size,
+        #                           self.output_dim,self.hidden_units)
+        # real beta T with shape (self.output_dim,self.hidden_units)
+        betaT = betaT0 
+        # for solving matrix equation (J.T@J)betaT_ =J.T@deltay
+        betaT_ = betaT0.reshape(self.output_dim*self.hidden_units,1)
+        self.res_hist = []
+        start = time.time()
+        
+        for i in range(num_iter):
+            J_ = J(betaT).reshape(self.output_dim*self.sample_size,
+                                self.output_dim*self.hidden_units)
+            deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
+            delta_beta_ = np.linalg.solve(J_.T@J_+1e-4*np.eye(self.hidden_units),J_.T@deltay_)
+            betaT = betaT + delta_beta_.reshape(self.output_dim,self.hidden_units)
+            betaT_ = betaT_ + delta_beta_
+            train_score = np.mean(np.abs(self.N(betaT)))
+            self.res_hist.append(train_score)
+            if i%500 == 0:
+                print(f'Train_score when iter={i}: {train_score}')
+        
+        print(time.time()-start,' seconds cost for nonlinear least square.')
+        return betaT.T
 
     def __constrained_expression(self, x):
         if self.de_name == 'heat_diff':
@@ -261,6 +251,7 @@ class elm():
             return expr_result.T
         if self.de_name == 'dde_logistic':
             T = x[:,0:1].reshape(1,-1)
+            
             expr_result = (T<=0)*self.history_func(T)+\
                 (T>0)*self.__hidden2output(self.__sigma(X=T)).T
             return expr_result.T
@@ -293,8 +284,6 @@ class elm():
         
         if self.elm_type=='reg':
             self.y_temp = self.y
-        if self.elm_type=='nonlin_reg':
-            self.y_temp = self.y
         # no regularization
         if algorithm == 'no_re':
             if self.elm_type == 'de':
@@ -303,8 +292,6 @@ class elm():
                 if self.de_name == 'dde_logistic':
                     self.beta = self.__make_beta(num_iter = num_iter)
 
-            if self.elm_type == 'nonlin_reg':
-                self.beta = self.__make_beta(num_iter = num_iter)
             else:
                 # self.beta = np.dot(pinv2(self.H.T), self.y_temp)
                 self.beta = np.dot(np.linalg.pinv(self.H.T), self.y_temp)
@@ -334,8 +321,6 @@ class elm():
         # compute the results
         if self.elm_type =='de':
             self.result = self.predict(self.x)
-        elif self.elm_type == 'nonlin_reg':
-            self.result = None
         else:
             self.result = self.__hidden2output(self.H)
         # If the problem is classification problem, 
@@ -358,8 +343,6 @@ class elm():
                 np.sum(
                     (self.result - self.y)*(self.result-self.y)/self.y.shape[0])
             )
-        if self.elm_type == 'nonlin_reg':
-            self.train_score = np.mean(np.abs(self.N(self.beta.T)))
         if self.elm_type == 'de':
             if self.de_name == 'heat_diff':
                 self.train_score = self.__hidden2residualscore(self.H_physics)
@@ -414,7 +397,7 @@ class elm():
                 if self.prediction[i] == y[i]:
                     self.correct = self.correct + 1
             self.test_score = self.correct/ y.shape[0]
-        if (self.elm_type == 'reg') or (self.elm_type == 'de') or (self.elm_type == 'nonlin_reg'):
+        if (self.elm_type == 'reg') or (self.elm_type == 'de'):
             print("here")
             self.test_score = np.sqrt(
                 np.sum(

@@ -1,5 +1,5 @@
 #%%
-from elm_direct_physics_dde import elm
+from elm_autograd_physics_dde_fourier_embedding import elm
 import numpy as np
 import time
 
@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 #%%
-is_py = True
+is_py = False
 
 
 
@@ -87,18 +87,23 @@ initial_history_func = lambda t: y0*np.ones_like(t)
 from scipy.io import loadmat
 file = loadmat(f"dataset/dde_logistic_{a}_{tau}_.mat")
 X_test = file['t']
-U_test = file['u']
+U_test_ = file['u']
+U_test = np.zeros((num_test_pts,1))
+for i in range(U_test_.shape[0]):
+    U_test[i]=U_test_[i][0][0,0]
+
 plt.plot(X_test, U_test, color='red', linewidth=1,label='ddeint')
 # plt.plot(t, u, color='blue',linestyle='--' ,linewidth=1,label='ddeint')
 plt.grid()
 plt.legend()
 plt.show()
+
 #%%
 seed = int(time.time())
-
+print('Colloc random seed:',seed)
 np.random.seed(seed)
-N_colloc =2000
-
+N_colloc =1000
+print('N_colloc: ',N_colloc)
 # ts_ = np.random.uniform(tl,tr,N_colloc).reshape(-1,1)
 ts_ = np.linspace(tl,tr,N_colloc).reshape(-1,1)
 X_colloc = ts_
@@ -117,7 +122,7 @@ options = {
 if is_py:
     parser = argparse.ArgumentParser()
     parser.add_argument('-opt_num',help='Option number',default=0)
-    parser.add_argument('-act_func',help='Activation function',default='tanh')
+    parser.add_argument('-act_func',help='Activation function',default='sin')
     args = parser.parse_args()
     opt_num = int(args.opt_num)
     act_func = args.act_func
@@ -127,28 +132,26 @@ else:
     opt_num = 0
     act_func = 'sin'
 model = elm(x= X_colloc, y=U_colloc, C = options[opt_num]['C'],
-            hidden_units=32, activation_function=act_func,
+            hidden_units=500, activation_function=act_func,
             random_type='normal', elm_type='de',de_name='dde_logistic',
             history_func=initial_history_func,
             physic_param = [a], tau=tau,
-            random_seed = seed,Wscale=20, bscale=0.000,fourier_embedding=False)
+            random_seed = seed,Wscale=10, bscale=0.01,fourier_embedding=True)
 if is_py:
-    sys.stdout = open("logs/"+model.elm_type+"_"+model.de_name+f"_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
+    sys.stdout = open("logs/"+model.elm_type+"_"+model.de_name+f"(using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
 #%%
 print("model options: ",model.option_dict)
-print('Colloc random seed:',seed)
-print('N_colloc: ',N_colloc)
 beta, train_score, running_time = model.fit(algorithm=options[opt_num]['alg'],
-                                            num_iter =5000)#'no_re','solution1'
+                                            num_iter =2000)#'no_re','solution1'
 print("learned beta:\n", beta)
 print("learned beta shape:\n", beta.shape)
 print("test score:\n", train_score)
 print("running time:\n", running_time)
 plt.figure(figsize=(5,4))
 plt.semilogy(model.res_hist)
-if is_py:
-    plt.savefig("figure/"+model.elm_type+"_"+model.de_name+f"_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
 
+if is_py:
+    plt.savefig("figure/"+model.elm_type+"_"+model.de_name+f"(using_autograd)_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -160,7 +163,7 @@ print("predicted result: ", U_pred.shape)
 
 err = np.abs(U_pred-U_test)
 err = np.linalg.norm(err)/np.linalg.norm(U_test)
-print("Relative L2-error norm: {}".format(err[0,0]))
+print("Relative L2-error norm: {}".format(err))
 
 plt.rcParams['font.size'] = 20
 plt.rcParams['lines.linewidth']=3
@@ -178,7 +181,7 @@ plt.xlabel('t')
 
 
 if is_py:
-    plt.savefig("figure/"+model.elm_type+"_"+model.de_name+f"_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+    plt.savefig("figure/"+model.elm_type+"_"+model.de_name+f"(using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%

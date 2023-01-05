@@ -10,7 +10,7 @@ class elm():
     def __init__(self, x,y,C,physic_param = None,elm_type='reg',
                 one_hot = False,hidden_units=32, activation_function='sin',
                 random_type='normal',de_name=None, tau = None,history_func = None,
-                random_seed=None,Wscale=None,bscale=None):
+                random_seed=None,Wscale=None,bscale=None,fourier_embedding=False):
         '''
         Function: elm class init
         -------------------------
@@ -44,6 +44,8 @@ class elm():
         option_dict['physics_param']=physic_param
         option_dict['de_name']=de_name
         option_dict['tau']=tau
+        option_dict['random_seed'] = random_seed
+        option_dict['fourier_embedding'] =fourier_embedding
         self.random_seed = random_seed
         np.random.seed(random_seed)
         print('Random seed: ',random_seed)
@@ -87,6 +89,8 @@ class elm():
 
             print("W scale:",Wscale)
             print("b scale:",bscale)
+            self.option_dict['Wscale']=Wscale
+            self.option_dict['bscale']=bscale
             self.W = np.random.normal(loc=0, scale=Wscale, size=(self.hidden_units, self.input_dim))
             self.b = np.random.normal(loc=0, scale=bscale, size=(self.hidden_units, 1))
         if self.activation_function == 'sigmoid':
@@ -97,9 +101,9 @@ class elm():
             self.act_func = lambda x: x * (x>0)
             self.act_func_p = lambda x: 1.0* (x>0)
         if self.activation_function == 'tanh':
-            self.act_func = lambda x: (np.exp(x)- np.exp(-x))/(np.exp(x)+np.exp(-x))
-            self.act_func_p = lambda x: 4/(np.exp(x)+np.exp(-x))**2
-            self.act_func_pp = lambda x:-8*(np.exp(x)-np.exp(-x))/(np.exp(x)+np.exp(-x))**3
+            self.act_func = lambda x: np.tanh(x)#(np.exp(x)- np.exp(-x))/(np.exp(x)+np.exp(-x))
+            self.act_func_p = lambda x: 1/(np.cos(x)**2)#4/(np.exp(x)+np.exp(-x))**2
+            self.act_func_pp = lambda x:2*np.tanh(x)/(np.cosh(x)**2)#-8*(np.exp(x)-np.exp(-x))/(np.exp(x)+np.exp(-x))**3
         if self.activation_function == 'leaky_relu':
             self.act_func = lambda x: x*(x>0)+0.1*x*(x<0)#np.max(0, x) + 0.1* np.min(0, x)
             self.act_func_p = lambda x: 0.1*(x<=0)+1.0*(x>0)   
@@ -129,6 +133,7 @@ class elm():
             x = np.concatenate([X,T],axis=0) # input_dim x sample_size
         elif self.input_dim == 1:
             x = X
+            x = x/self.x.std()
         self.temH = np.matmul(self.W, x) + self.b    
         H = self.act_func(self.temH)
         return H
@@ -137,6 +142,7 @@ class elm():
             x = np.concatenate([X,T],axis=0) # input_dim x sample_size
         elif self.input_dim == 1:
             x = X
+            x = x/self.x.std()
         self.temH = np.dot(self.W, x) + self.b    
         H = self.act_func_p(self.temH)
         return H
@@ -145,6 +151,7 @@ class elm():
             x = np.concatenate([X,T],axis=0) # input_dim x sample_size
         elif self.input_dim == 1:
             x = X
+            x = x/self.x.std()
         self.temH = np.dot(self.W, x) + self.b    
         H = self.act_func_pp(self.temH)
         return H
@@ -179,11 +186,13 @@ class elm():
         sig = self.__sigma(X=T) # hidden_units x sample_size
         sig_delay = self.__sigma(X=T-self.tau) # hidden_units x sample_size
         sig_t = self.W*self.__sigma_p(X=T) # hidden_units x sample_size
+        sig_t = sig_t/(self.x.std())
         def N(betaT): # betaT has shape (output_dim x hidden_units)
             if self.de_name == 'dde_logistic':
                 # Nonlinear w.r.t. beta
                 expr_physics = betaT@sig_t - a* betaT@sig*(1-betaT@sig_delay)
                 return expr_physics
+        self.N = N
         def J_direct(betaT):
             if self.de_name == 'dde_logistic':
                 expr_jacobian = sig_t.swapaxes(0,1)[None,:,None,:] \
@@ -199,16 +208,21 @@ class elm():
         betaT = betaT0 
         # for solving matrix equation (J.T@J)betaT_ =J.T@deltay
         betaT_ = betaT0.reshape(self.output_dim*self.hidden_units,1)
+        self.res_hist = []
         start = time.time()
+        
         for i in range(num_iter):
-            J_ = J_direct(betaT).reshape(self.output_dim*self.sample_size,
+            J_ = J(betaT).reshape(self.output_dim*self.sample_size,
                                 self.output_dim*self.hidden_units)
             deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
-            delta_beta_ = jnp.linalg.solve(J_.T@J_,J_.T@deltay_)
+            delta_beta_ = jnp.linalg.solve(J_.T@J_+1e-4*jnp.eye(self.hidden_units),J_.T@deltay_)
             betaT = betaT + delta_beta_.reshape(self.output_dim,self.hidden_units)
             betaT_ = betaT_ + delta_beta_
-            
-            
+            train_score = np.mean(np.abs(self.N(betaT)))
+            self.res_hist.append(train_score)
+            if i%500 == 0:
+                print(f'Train_score when iter={i}: {train_score}')
+        
         print(time.time()-start,' seconds cost for nonlinear least square.')
         return betaT.T
 
@@ -227,6 +241,7 @@ class elm():
             return expr_result.T
         if self.de_name == 'dde_logistic':
             T = x[:,0:1].reshape(1,-1)
+            
             expr_result = (T<=0)*self.history_func(T)+\
                 (T>0)*self.__hidden2output(self.__sigma(X=T)).T
             return expr_result.T
@@ -265,7 +280,7 @@ class elm():
                 if self.de_name == 'heat_diff':
                     self.beta = np.dot(np.linalg.pinv(self.H_physics.T),self.y_temp.T)
                 if self.de_name == 'dde_logistic':
-                    self.beta = self.__make_beta(num_iter = 10)
+                    self.beta = self.__make_beta(num_iter = num_iter)
 
             else:
                 # self.beta = np.dot(pinv2(self.H.T), self.y_temp)
@@ -322,17 +337,8 @@ class elm():
             if self.de_name == 'heat_diff':
                 self.train_score = self.__hidden2residualscore(self.H_physics)
             if self.de_name == 'dde_logistic':
-                def N(betaT): # betaT has shape (output_dim x hidden_units)
-                    a = self.physics_param[0]
-                    T = self.x[:,0:1].reshape(1,-1) # 1 x sample_size
-                    sig = self.__sigma(T) # hidden_units x sample_size
-                    sig_delay = self.__sigma(T-self.tau) # hidden_units x sample_size
-                    sig_t = self.W*self.__sigma_p(T) # hidden_units x sample_size
-        
-                    # Nonlinear w.r.t. beta
-                    expr_physics = betaT@sig_t - a* betaT@sig*(1-betaT@sig_delay)
-                    return expr_physics
-                self.train_score = np.mean(np.abs(N(self.beta.T)))
+                
+                self.train_score = np.mean(np.abs(self.N(self.beta.T)))
         train_time = str(self.time2- self.time1)
         return self.beta, self.train_score, train_time
 

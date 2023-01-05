@@ -1,0 +1,55 @@
+model options:  {'elm_type': 'de', 'random_type': 'normal', 'activation_function': 'sin', 'hidden_units': 32, 'C': 1.0, 'one_hot': False, 'physics_param': [0.3], 'de_name': 'dde_logistic', 'tau': 1.0, 'random_seed': 1672924910, 'fourier_embedding': False, 'Wscale': 20, 'bscale': 0.0}
+Colloc random seed: 1672924910
+N_colloc:  2000
+Train_score when iter=0: 1.8322429656982422
+Train_score when iter=500: 0.0009877928532660007
+Train_score when iter=1000: 0.0009838916594162583
+Train_score when iter=1500: 0.0009796225931495428
+Train_score when iter=2000: 0.000976997776888311
+Train_score when iter=2500: 0.0009739152737893164
+Train_score when iter=3000: 0.0009723305702209473
+Train_score when iter=3500: 0.0009693182073533535
+Train_score when iter=4000: 0.0009684800170361996
+Train_score when iter=4500: 0.0009668467100709677
+62.28677582740784  seconds cost for nonlinear least square.
+learned beta:
+ [[ 1.5789680e-01]
+ [-1.1430827e+02]
+ [-5.0608915e-06]
+ [-5.0050014e-05]
+ [ 1.6340561e+02]
+ [ 9.6034064e-06]
+ [-7.4619362e-05]
+ [ 6.5918779e-05]
+ [-1.7036687e-05]
+ [ 1.1119349e-02]
+ [-1.9913487e+02]
+ [-5.7799549e+01]
+ [-5.7433849e-06]
+ [-9.7344664e-06]
+ [ 2.2035461e+02]
+ [-1.0295029e-02]
+ [-9.9025639e-03]
+ [ 3.8995026e-05]
+ [-9.8646715e-06]
+ [ 8.5970369e-06]
+ [ 1.3390246e-01]
+ [-2.2020181e+02]
+ [-8.8716103e+01]
+ [-8.2652208e-05]
+ [ 1.3580230e-05]
+ [ 7.7852346e-02]
+ [ 6.3258262e-06]
+ [-8.8288101e+01]
+ [ 7.2868461e-05]
+ [-4.8225131e-02]
+ [ 1.9154366e+02]
+ [ 3.4982590e-06]]
+learned beta shape:
+ (32, 1)
+test score:
+ 0.00096684974
+running time:
+ 63.67280983924866
+predicted result:  (1000, 1)
+Relative L2-error norm: 0.23929266713282388
