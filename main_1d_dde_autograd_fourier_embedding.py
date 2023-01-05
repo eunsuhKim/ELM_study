@@ -15,7 +15,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 #%%
-is_py = False
+is_py = True
+is_py_ = False
 
 
 
@@ -119,7 +120,7 @@ options = {
     1:{'C':1e16, 'alg':'solution1'},
     2:{'C':1e16, 'alg':'solution2'}
     }
-if is_py:
+if is_py_:
     parser = argparse.ArgumentParser()
     parser.add_argument('-opt_num',help='Option number',default=0)
     parser.add_argument('-act_func',help='Activation function',default='sin')
