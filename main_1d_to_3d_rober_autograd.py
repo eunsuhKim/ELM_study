@@ -1,8 +1,8 @@
 #%%
 from elm_autograd_physics_1d_to_3d import elm
-import numpy as np
+import numpy as onp
 import time
-
+import jax.numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import make_regression
 from sklearn.preprocessing import StandardScaler
@@ -10,13 +10,16 @@ import matplotlib.pyplot as plt
 import sys
 from scipy.io import loadmat
 import os 
+import jax
+jax.config.update("jax_enable_x64", True)
 os.environ['CUDA_DEVICE_0_RDER'] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
+from scipy.special import roots_legendre, eval_legendre
 import argparse
 #%%
 is_py = False
-
+is_save = True
 
 
 
@@ -35,8 +38,10 @@ k3 = 1e4
 
 from scipy.io import loadmat 
 file = loadmat("dataset/rober.mat")
-X_test =file['t'].reshape(-1,1)#[:20,:]
-U_test =file['y'].reshape(-1,3)#[:20,:]
+
+upto_here = 12 #among 51
+X_test =file['t'].reshape(-1,1)[:upto_here,:]
+U_test =file['y'].reshape(-1,3)[:upto_here,:]
 
 
 tl = np.min(X_test)
@@ -86,11 +91,13 @@ plt.show()
 #%%
 seed = int(time.time())
 print('Colloc random seed:',seed)
-np.random.seed(seed)
-N_colloc =100000
-print('N_colloc: ',N_colloc)
+onp.random.seed(seed)
+N_colloc =15
+
+roots= roots_legendre(N_colloc)[0].reshape(-1,1)
+ts_ = (roots+1)/2*(tr-tl)
 # ts_ = np.random.uniform(tl,tr,N_colloc).reshape(-1,1)
-ts_ = np.linspace(tl,tr,N_colloc).reshape(-1,1)
+# ts_ = np.linspace(tl,tr,N_colloc).reshape(-1,1)
 X_colloc = ts_
 
 U_colloc = np.zeros_like(X_colloc).repeat(3,1)
@@ -117,25 +124,29 @@ else:
     opt_num = 0
     act_func = 'sin'
 model = elm(x= X_colloc, y=U_colloc, C = options[opt_num]['C'],
-            hidden_units=32, activation_function=act_func,
-            random_type='normal', elm_type='de',de_name='rober',
-            physic_param = [k1,k2,k3], initial_val = np.array(u0),
-            random_seed = seed,Wscale=20, bscale=0.000,fourier_embedding=False)
-if is_py:
-    sys.stdout = open("logs/"+model.elm_type+"_"+model.de_name+f"(using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
+            hidden_units=10, activation_function=act_func,
+            random_type='uniform', elm_type='de',de_name='rober',
+            quadrature =True,
+            physic_param = [k1,k2,k3], initial_val = u0,
+            random_seed = seed,Wscale=None, bscale=None,fourier_embedding=False)
+if is_save:
+    sys.stdout = open("logs/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
 #%%
 print("model options: ",model.option_dict)
-beta, train_score, running_time = model.fit(algorithm=options[opt_num]['alg'],
-                                            num_iter =100)#'no_re','solution1'
+print('N_colloc: ',N_colloc)
+
+beta, train_score, running_time = model.fit(
+    algorithm=options[opt_num]['alg'],
+    num_iter =500)#'no_re','solution1'
 print("learned beta:\n", beta)
 print("learned beta shape:\n", beta.shape)
 print("test score:\n", train_score)
 print("running time:\n", running_time)
-plt.figure(figsize=(5,4))
+plt.figure()
 plt.semilogy(model.res_hist)
 
-if is_py:
-    plt.savefig("figure/"+model.elm_type+"_"+model.de_name+f"(using_autograd)_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
+if is_save:
+    plt.savefig("figure/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -163,12 +174,12 @@ plt.plot(X_test,U_pred[:,2:3],'orange',ls='--',label='pred z')
 plt.legend(loc=2)
 plt.xscale("log")
 plt.grid()
-plt.ylim([0.0,1.0])
+plt.ylim([-0.1,1.5])
 plt.xlabel('t')
 
 
-if is_py:
-    plt.savefig("figure/"+model.elm_type+"_"+model.de_name+f"(using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+if is_save:
+    plt.savefig("figure/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -184,21 +195,19 @@ plt.plot(X_test,U_pred[:,1:2],'r',ls = 'dotted',label='pred y')
 # plt.plot(X_test,U_pred[:,2:3],'orange',ls='--',label='pred z')
 plt.legend(loc=2)
 plt.xscale("log")
-plt.ylim([0.0,1e-4])
+plt.ylim([-1e-5,1e-4])
 plt.grid()
 plt.xlabel('t')
 
 
-if is_py:
-    plt.savefig("figure/"+model.elm_type+"_"+model.de_name+f"(using_autograd)y_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+if is_save:
+    plt.savefig("figure/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)y_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
-if is_py:
+if is_save:
     sys.stdout.close()
 
     
 
-# %%
-model.predict(X_colloc).shape
 # %%

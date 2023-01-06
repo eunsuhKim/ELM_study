@@ -4,6 +4,7 @@ import time
 import jax.numpy as np
 import jax
 from jax import jacfwd, vmap, grad, jvp, vjp
+from scipy.special import roots_legendre
 jax.config.update("jax_enable_x64", True)
 
 class elm():
@@ -11,7 +12,8 @@ class elm():
     def __init__(self, x,y,C,physic_param = None,elm_type='reg',
                 one_hot = False,hidden_units=32, activation_function='sin',initial_val = None,
                 random_type='normal',de_name=None, tau = None,history_func = None,
-                random_seed=None,Wscale=None,bscale=None,fourier_embedding=False):
+                random_seed=None,Wscale=None,bscale=None,fourier_embedding=False,
+                quadrature=True):
         '''
         Function: elm class init
         -------------------------
@@ -48,6 +50,7 @@ class elm():
         option_dict['random_seed'] = random_seed
         option_dict['fourier_embedding'] =fourier_embedding
         option_dict['initial_val'] = initial_val
+        option_dict['quadrature']=quadrature
         self.random_seed = random_seed
         onp.random.seed(random_seed)
         print('Random seed: ',random_seed)
@@ -60,7 +63,8 @@ class elm():
         self.history_func = history_func
         self.input_dim = x.shape[1]
         self.sample_size = x.shape[0]
-        self.initial_val = initial_val
+        self.initial_val = np.array(initial_val).reshape(-1,1)
+        self.quadrature = quadrature
         self.x = x
         self.y = y
         self.C = C
@@ -86,8 +90,8 @@ class elm():
         # 'uniform': uniform distribution U(0,1)
         # 'normal': normal distribution N(0,0.5)
         if self.random_type == 'uniform':
-            self.W = onp.random.uniform(low=0,high = 10, size=(self.hidden_units, self.input_dim))
-            self.b = onp.random.uniform(low = 0, high = 10, size = (self.hidden_units, 1))
+            self.W = onp.random.uniform(low=-1,high = 1, size=(self.hidden_units, self.input_dim))
+            self.b = onp.random.uniform(low = -1, high = 1, size = (self.hidden_units, 1))
         if self.random_type =='normal':
 
             print("W scale:",Wscale)
@@ -140,24 +144,7 @@ class elm():
         self.temH = np.matmul(self.W, x.reshape(1,-1)) + self.b    
         H = self.act_func(self.temH)
         return H
-    # def __sigma_p(self,X,T=None):
-    #     if self.input_dim == 2:
-    #         x = np.concatenate([X,T],axis=0) # input_dim x sample_size
-    #     elif self.input_dim == 1:
-    #         x = X
-    #         x = x/self.x.std()
-    #     self.temH = np.dot(self.W, x) + self.b    
-    #     H = self.act_func_p(self.temH)
-    #     return H
-    # def __sigma_pp(self,X,T=None):
-    #     if self.input_dim == 2:
-    #         x = np.concatenate([X,T],axis=0) # input_dim x sample_size
-    #     elif self.input_dim == 1:
-    #         x = X
-    #         x = x/self.x.std()
-    #     self.temH = np.dot(self.W, x) + self.b    
-    #     H = self.act_func_pp(self.temH)
-    #     return H
+
     def history_func(self,t):
         if self.de_name == 'dde_logistic':
             return 0.1*np.ones_like(t) 
@@ -182,6 +169,11 @@ class elm():
             return expr_physics
 
     def __make_beta(self,num_iter = 10):
+        if self.quadrature == True:
+            weights = roots_legendre(self.sample_size)[1].reshape(1,-1)
+        else: 
+            weights = np.ones((1,self.sample_size))
+                
         betaT0 = onp.random.randn(self.output_dim,self.hidden_units)
         betaT0 = np.array(betaT0)
         
@@ -206,12 +198,12 @@ class elm():
                 k1, k2, k3 = self.physics_param
                 # Nonlinear w.r.t. beta
                 def warpper_func_0(T):
-                    return (betaT@(self.__sigma(X = T)))[0,0]
+                    return (self.initial_val+T*(betaT@(self.__sigma(X = T))))[0,0]
                 def warpper_func_1(T):
-                    return (betaT@(self.__sigma(X = T)))[1,0]
+                    return (self.initial_val+T*(betaT@(self.__sigma(X = T))))[1,0]
                 def warpper_func_2(T):
-                    return (betaT@(self.__sigma(X = T)))[2,0]
-                u = betaT @ self.__sigma(X = T)
+                    return (self.initial_val+T*(betaT@(self.__sigma(X = T))))[2,0]
+                u = self.initial_val+T*(betaT @ self.__sigma(X = T))
                 x = u[0:1,:]
                 y = u[1:2,:]
                 z = u[2:3,:]
@@ -228,7 +220,7 @@ class elm():
                 rhs_y =  k1*x - k3 * y * z - k2 * y**2
                 rhs_z =                      k2 * y**2
                 expr_physics = np.concatenate([x_t-rhs_x,y_t-rhs_y,z_t-rhs_z])
-                return expr_physics
+                return weights*expr_physics
         self.N = N
 
         J = jacfwd(N) 
@@ -250,7 +242,8 @@ class elm():
             betaT_ = betaT_ + delta_beta_
             train_score = np.mean(np.abs(self.N(betaT)))
             self.res_hist.append(train_score)
-            if i%1 == 0:
+            self.beta = betaT.T
+            if i%50 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
         print(time.time()-start,' seconds cost for nonlinear least square.')
