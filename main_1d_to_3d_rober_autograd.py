@@ -137,7 +137,7 @@ print('N_colloc: ',N_colloc)
 
 beta, train_score, running_time = model.fit(
     algorithm=options[opt_num]['alg'],
-    num_iter =500)#'no_re','solution1'
+    num_iter =100)#'no_re','solution1'
 print("learned beta:\n", beta)
 print("learned beta shape:\n", beta.shape)
 print("test score:\n", train_score)
