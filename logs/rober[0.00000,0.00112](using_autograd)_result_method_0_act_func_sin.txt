@@ -1,24 +1,24 @@
-model options:  {'elm_type': 'de', 'random_type': 'uniform', 'activation_function': 'sin', 'hidden_units': 10, 'C': 1.0, 'one_hot': False, 'physics_param': [0.04, 30000000.0, 10000.0], 'de_name': 'rober', 'tau': None, 'random_seed': 1673012248, 'fourier_embedding': False, 'initial_val': (1.0, 0.0, 0.0), 'quadrature': True}
+model options:  {'elm_type': 'de', 'random_type': 'uniform', 'activation_function': 'sin', 'hidden_units': 10, 'C': 1.0, 'one_hot': False, 'physics_param': [0.04, 30000000.0, 10000.0], 'de_name': 'rober', 'tau': None, 'random_seed': 1673012827, 'fourier_embedding': False, 'initial_val': (1.0, 0.0, 0.0), 'quadrature': True}
 N_colloc:  15
-Train_score when iter=0: 0.6090860105577781
-Train_score when iter=50: 3.1349171225867206e-05
-19.27023410797119  seconds cost for nonlinear least square.
+Train_score when iter=0: 0.06621964115478873
+Train_score when iter=50: 5.6322199360052894e-05
+17.795602083206177  seconds cost for nonlinear least square.
 learned beta:
- [[ 0.3199528   0.9954931  -0.39160035]
- [-1.24667565  0.52477035  1.04275014]
- [ 0.54107662  0.48329578  0.4320236 ]
- [ 1.15123023 -2.1693664  -0.33204639]
- [ 0.04635002  0.10645307 -0.16567727]
- [ 0.68237913 -0.13411965  1.41177378]
- [ 0.96594096 -1.34730898 -1.18338486]
- [-0.8110625  -0.5184369  -0.67951766]
- [-0.48281691  0.57036517  0.0381238 ]
- [-0.60545582 -1.46132436 -0.29025068]]
+ [[ 0.33638789  0.78624447 -1.44958033]
+ [ 0.05819672  0.26815025  0.33828475]
+ [-0.49264748 -0.76474798 -0.01697512]
+ [-0.96983383 -0.80707154 -1.32804523]
+ [ 0.60737442  0.43482666  0.79305248]
+ [ 0.91525838  1.28639258 -0.35156701]
+ [-0.39272648 -0.45615981  0.32832033]
+ [ 0.05874819 -0.26578758 -0.78219054]
+ [-0.1670795   0.37141607 -0.02633689]
+ [ 0.28477179  0.09795016 -0.71012769]]
 learned beta shape:
  (10, 3)
 test score:
- 3.106542271804051e-05
+ 5.529919577692871e-05
 running time:
- 19.558528423309326
+ 18.398086547851562
 predicted result:  (12, 3)
-Relative L2-error norm: 4.9889092532889815e-08
+Relative L2-error norm: 9.617482914120852e-08
