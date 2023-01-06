@@ -4,13 +4,14 @@ import time
 import jax.numpy as np
 import jax
 from jax import jacfwd, vmap, grad, jvp, vjp
+from scipy.special import roots_legendre
 jax.config.update("jax_enable_x64", True)
 
 class elm():
     
     def __init__(self, x,y,C,physic_param = None,elm_type='reg',
                 one_hot = False,hidden_units=32, activation_function='sin',
-                random_type='normal',de_name=None, tau = None,history_func = None,
+                random_type='normal',de_name=None,quadrature=False, tau = None,history_func = None,
                 random_seed=None,Wscale=None,bscale=None,fourier_embedding=False):
         '''
         Function: elm class init
@@ -47,6 +48,7 @@ class elm():
         option_dict['tau']=tau
         option_dict['random_seed'] = random_seed
         option_dict['fourier_embedding'] =fourier_embedding
+        option_dict['quadrature']=quadrature
         self.random_seed = random_seed
         onp.random.seed(random_seed)
         print('Random seed: ',random_seed)
@@ -59,6 +61,7 @@ class elm():
         self.history_func = history_func
         self.input_dim = x.shape[1]
         self.sample_size = x.shape[0]
+        self.quadrature = quadrature
         self.x = x
         self.y = y
         self.C = C
@@ -84,8 +87,8 @@ class elm():
         # 'uniform': uniform distribution U(0,1)
         # 'normal': normal distribution N(0,0.5)
         if self.random_type == 'uniform':
-            self.W = onp.random.uniform(low=0,high = 10, size=(self.hidden_units, self.input_dim))
-            self.b = onp.random.uniform(low = 0, high = 10, size = (self.hidden_units, 1))
+            self.W = onp.random.uniform(low=-1,high = 1, size=(self.hidden_units, self.input_dim))
+            self.b = onp.random.uniform(low = -1, high = 1, size = (self.hidden_units, 1))
         if self.random_type =='normal':
 
             print("W scale:",Wscale)
@@ -180,6 +183,12 @@ class elm():
             return expr_physics
 
     def __make_beta(self,num_iter = 10):
+
+        if self.quadrature == True:
+            weights = roots_legendre(self.sample_size)[1].reshape(1,-1)
+        else: 
+            weights = np.ones((1,self.sample_size))
+        
         betaT0 = onp.random.randn(self.input_dim,self.hidden_units)
         betaT0 = np.array(betaT0)
         
@@ -191,26 +200,20 @@ class elm():
         # sig_t = sig_t/(self.x.std())
         
         def N(betaT): # betaT has shape (output_dim x hidden_units)
+            
             if self.de_name == 'dde_logistic':
                 # Nonlinear w.r.t. beta
                 def warpper_func(T):
-                    return (betaT@(self.__sigma(X = T)))[0,0]
-                u = betaT @ self.__sigma(X = T)
-                u_delay= betaT @ self.__sigma(X=T-self.tau)
+                    return ((T<=0)*self.history_func(T)+(T>0)*betaT@(self.__sigma(X = T)))[0,0]
+                u = (T<=0)*self.history_func(T)+(T>0)*(betaT @ self.__sigma(X = T))
+                u_delay= (T-self.tau<=0)*self.history_func(T-self.tau)+(T-self.tau>0)*(betaT @ self.__sigma(X=T-self.tau))
                 u_p = grad(warpper_func)
                 u_p_vmap = vmap(u_p,in_axes=1,out_axes=1)
                 u_t = u_p_vmap(T)
                 expr_physics = u_t - a*u*(1-u_delay)
-                return expr_physics
+                return weights*expr_physics
         self.N = N
-        # def J_direct(betaT):
-        #     if self.de_name == 'dde_logistic':
-        #         expr_jacobian = sig_t.swapaxes(0,1)[None,:,None,:] \
-        #                 -a* sig.swapaxes(0,1)[None,:,None,:] \
-        #                 +a * sig.swapaxes(0,1)[None,:,None,:] * (betaT@sig_delay).swapaxes(0,1)[None,:,:,None] \
-        #                 +a*(betaT@sig).swapaxes(0,1)[None,:,:,None]* sig_delay.swapaxes(0,1)[None,:,None,:]
-        #         # jacobian throught manual calculation
-        #         return expr_jacobian
+
         J = jacfwd(N) 
         # J originally has shape (self.output_dim,self.sample_size,
         #                           self.output_dim,self.hidden_units)
@@ -230,6 +233,7 @@ class elm():
             betaT_ = betaT_ + delta_beta_
             train_score = np.mean(np.abs(self.N(betaT)))
             self.res_hist.append(train_score)
+            self.beta = betaT.T
             if i%500 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
