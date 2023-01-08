@@ -79,7 +79,7 @@ plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
 if is_save:
-    plt.savefig("figure/rober_goal_xz"+f"[{tl:.5f},{tr:.5f}].pdf")
+    plt.savefig("figure/rober_goal_xz"+f"[{tl:.5f},{tr:.5f}].pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
@@ -90,7 +90,7 @@ plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
 if is_save:
-    plt.savefig("figure/rober_goal_y"+f"[{tl:.5f},{tr:.5f}].pdf")
+    plt.savefig("figure/rober_goal_y"+f"[{tl:.5f},{tr:.5f}].pdf",bbox_inches='tight')
 else:
     plt.show()
 
