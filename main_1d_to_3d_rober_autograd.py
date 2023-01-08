@@ -39,7 +39,7 @@ k3 = 1e4
 from scipy.io import loadmat 
 file = loadmat("dataset/rober.mat")
 
-upto_here = 12 #among 51
+upto_here = 51#12 #among 51
 X_test =file['t'].reshape(-1,1)[:upto_here,:]
 U_test =file['y'].reshape(-1,3)[:upto_here,:]
 
@@ -78,7 +78,10 @@ plt.grid()
 plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
-plt.show()
+if is_save:
+    plt.savefig("figure/rober_goal_xz"+f"[{tl:.5f},{tr:.5f}].pdf")
+else:
+    plt.show()
 #%%
 plt.figure()
 plt.plot(X_test, U_test[:,1:2],label='y',color='coral')
@@ -86,7 +89,10 @@ plt.grid()
 plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
-plt.show()
+if is_save:
+    plt.savefig("figure/rober_goal_y"+f"[{tl:.5f},{tr:.5f}].pdf")
+else:
+    plt.show()
 
 #%%
 seed = int(time.time())
