@@ -204,9 +204,11 @@ class elm():
             if self.de_name == 'dde_logistic':
                 # Nonlinear w.r.t. beta
                 def warpper_func(T):
-                    return ((T<=0)*self.history_func(T)+(T>0)*betaT@(self.__sigma(X = T)))[0,0]
-                u = (T<=0)*self.history_func(T)+(T>0)*(betaT @ self.__sigma(X = T))
-                u_delay= (T-self.tau<=0)*self.history_func(T-self.tau)+(T-self.tau>0)*(betaT @ self.__sigma(X=T-self.tau))
+                    return ((T<=0)*self.history_func(T)+(T>0)*(T*betaT@(self.__sigma(X = T))+self.history_func(0).item()))[0,0]
+
+                u = (T<=0)*self.history_func(T)+(T>0)*(T*(betaT @ self.__sigma(X = T))+self.history_func(0).item())
+                u_delay= ((T-self.tau)<=0)*self.history_func(T-self.tau)+\
+                    ((T-self.tau)>0)*((T-self.tau)*(betaT @ self.__sigma(X=(T-self.tau)))+self.history_func(0).item())
                 u_p = grad(warpper_func)
 
                 u_p_vmap = vmap(u_p,in_axes=1,out_axes=1)
@@ -258,7 +260,7 @@ class elm():
             T = x[:,0:1].reshape(1,-1)
             
             expr_result = (T<=0)*self.history_func(T)+\
-                (T>0)*self.__hidden2output(self.__sigma(X=T)).T
+                (T>0)*(T*self.__hidden2output(self.__sigma(X=T)).T+self.history_func(0).item())
             return expr_result.T
 
     def fit(self, algorithm = 0, num_iter = 100):
