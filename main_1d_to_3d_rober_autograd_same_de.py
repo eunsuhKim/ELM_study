@@ -20,7 +20,7 @@ from scipy.special import roots_legendre, eval_legendre
 import argparse
 #%%
 is_py = False
-is_save = False
+is_save = True
 
 
 
@@ -39,12 +39,12 @@ k3 = 1e4
 
 from scipy.io import loadmat 
 file = loadmat("dataset/rober_10001.mat")
-prev_start_idx = 2000#2000#0#12-1#0#12-1#0
-prev_end_idx =2500#2500#2001#14#12
-prev_result = loadmat(f"each_time_interval/[{prev_start_idx},{prev_end_idx}]_result.mat")
-# prev_result=None
-start_idx = 2499#12-1
-end_idx = 2550#13 #among 51
+# prev_start_idx = 0#2000#2000#0#12-1#0#12-1#0
+# prev_end_idx =2001#2500#2500#2001#14#12
+# prev_result = loadmat(f"each_time_interval_rober_ce/[{prev_start_idx},{prev_end_idx}]_result.mat")
+prev_result=None
+start_idx = 0#12-1
+end_idx = 2001#13 #among 51
 X_test =file['t'].reshape(-1,1)[start_idx:end_idx,:]
 U_test =file['y'].reshape(-1,3)[start_idx:end_idx,:]
 
@@ -90,7 +90,7 @@ plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
 if is_save:
-    plt.savefig("figure/rober_goal_xz"+f"[{start_idx},{end_idx}].pdf",bbox_inches='tight')
+    plt.savefig("figure_rober_ce/rober_goal_xz"+f"[{start_idx},{end_idx}].pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
@@ -101,7 +101,7 @@ plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
 if is_save:
-    plt.savefig("figure/rober_goal_y"+f"[{start_idx},{end_idx}].pdf",bbox_inches='tight')
+    plt.savefig("figure_rober_ce/rober_goal_y"+f"[{start_idx},{end_idx}].pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -109,7 +109,7 @@ else:
 seed = int(time.time())
 print('Colloc random seed:',seed)
 onp.random.seed(seed)
-N_colloc =100#15
+N_colloc =15#15
 
 roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
 ts_ = (roots+1)/2*(tr-tl)+tl
@@ -139,7 +139,7 @@ if is_py:
     
 else:
     opt_num = 0
-    act_func = 'sin'
+    act_func = 'tanh'
 model = elm(x= X_colloc, y=U_colloc, C = options[opt_num]['C'],
             hidden_units=10, activation_function=act_func,
             random_type='uniform', elm_type='de',de_name='rober',
@@ -147,14 +147,14 @@ model = elm(x= X_colloc, y=U_colloc, C = options[opt_num]['C'],
             physic_param = [k1,k2,k3], initial_val = u0,
             random_seed = seed,Wscale=None, bscale=None,fourier_embedding=False)
 if is_save:
-    sys.stdout = open("logs/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
+    sys.stdout = open("logs_rober_ce/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
 beta, train_score, running_time = model.fit(
     algorithm=options[opt_num]['alg'],
-    num_iter =10000)#'no_re','solution1'
+    num_iter =200)#'no_re','solution1'
 print("learned beta:\n", beta)
 print("learned beta shape:\n", beta.shape)
 print("test score:\n", train_score)
@@ -163,7 +163,7 @@ plt.figure()
 plt.semilogy(model.res_hist)
 
 if is_save:
-    plt.savefig("figure/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
+    plt.savefig("figure_rober_ce/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -196,7 +196,7 @@ plt.xlabel('t')
 
 
 if is_save:
-    plt.savefig("figure/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+    plt.savefig("figure_rober_ce/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -218,7 +218,7 @@ plt.xlabel('t')
 
 
 if is_save:
-    plt.savefig("figure/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)y_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+    plt.savefig("figure_rober_ce/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)y_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -246,7 +246,7 @@ saving_dict['U_pred']=onp.array(U_pred)
 saving_dict['W']= onp.array(model.W)
 saving_dict['b']= onp.array(model.b)
 saving_dict['beta']= onp.array(model.beta)
-savemat("each_time_interval/"+f"[{start_idx},{end_idx}]_result.mat",saving_dict)
+savemat("each_time_interval_rober_ce/"+f"[{start_idx},{end_idx}]_result.mat",saving_dict)
 
 # %%
 # so far result
@@ -254,7 +254,7 @@ prev_start_idxs = [0,2000]#,2499]
 prev_end_idxs =[2001,2500]#,2550]
 
 for i in range(len(prev_start_idxs)):
-    prev_result = loadmat(f"each_time_interval/[{prev_start_idxs[i]},{prev_end_idxs[i]}]_result.mat")
+    prev_result = loadmat(f"each_time_interval_rober_ce/[{prev_start_idxs[i]},{prev_end_idxs[i]}]_result.mat")
     if i == 0:
         X_tests = prev_result['X_test']
         U_tests = prev_result['U_test'] 

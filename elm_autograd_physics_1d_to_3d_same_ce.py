@@ -135,7 +135,7 @@ class elm():
         self.output = np.dot(self.beta.T,H_physics)
         return np.mean(np.abs(self.output-self.y_temp))
 
-    def __sigma(self,X,T=None):
+    def sigma(self,X,T=None):
         if self.input_dim == 2:
             x = np.concatenate([X,T],axis=0) # input_dim x sample_size
         elif self.input_dim == 1:
@@ -155,11 +155,11 @@ class elm():
             T = x[:,1:2].reshape(1,-1) # 1 x sample_size
             Wx = self.W[:,0:1] # hidden_units x 1
             Wt = self.W[:,1:2] # hidden_units x 1
-            sig_xx = (Wx**2)*self.__sigma_pp(X,T)
-            sig_xx_t0 = (Wx**2)*self.__sigma_pp(X,np.zeros_like(T))
-            sig_t = Wt*self.__sigma_p(X,T)
-            sig_t_x0 = Wt*self.__sigma_p(np.zeros_like(X),T)
-            sig_t_x1 = Wt*self.__sigma_p(np.ones_like(X),T)
+            sig_xx = (Wx**2)*self.sigma_pp(X,T)
+            sig_xx_t0 = (Wx**2)*self.sigma_pp(X,np.zeros_like(T))
+            sig_t = Wt*self.sigma_p(X,T)
+            sig_t_x0 = Wt*self.sigma_p(np.zeros_like(X),T)
+            sig_t_x1 = Wt*self.sigma_p(np.ones_like(X),T)
 
             f_xx = sig_xx  - sig_xx_t0
             f_t = sig_t +(X-1)*sig_t_x0 - (X)*sig_t_x1
@@ -186,9 +186,9 @@ class elm():
                 a = self.physics_param[0]
                 # Nonlinear w.r.t. beta
                 def wrapper_func(T):
-                    return (betaT@(self.__sigma(X = T)))[0,0]
-                u = betaT @ self.__sigma(X = T)
-                u_delay= betaT @ self.__sigma(X=T-self.tau)
+                    return (betaT@(self.sigma(X = T)))[0,0]
+                u = betaT @ self.sigma(X = T)
+                u_delay= betaT @ self.sigma(X=T-self.tau)
                 u_p = grad(wrapper_func)
                 u_p_vmap = vmap(u_p,in_axes=1,out_axes=1)
                 u_t = u_p_vmap(T)
@@ -198,12 +198,13 @@ class elm():
                 k1, k2, k3 = self.physics_param
                 # Nonlinear w.r.t. beta
                 def wrapper_func_0(T):
-                    return (self.initial_val+(betaT@(self.__sigma(X = T)-self.__sigma(X = T[0,0]))))[0,0]
+
+                    return (self.initial_val+(betaT@(self.sigma(X = T)-self.sigma(X = self.x[0,0]))))[0,0]
                 def wrapper_func_1(T):
-                    return (self.initial_val+(betaT@(self.__sigma(X = T)-self.__sigma(X = T[0,0]))))[1,0]
+                    return (self.initial_val+(betaT@(self.sigma(X = T)-self.sigma(X = self.x[0,0]))))[1,0]
                 def wrapper_func_2(T):
-                    return (self.initial_val+(betaT@(self.__sigma(X = T)-self.__sigma(X = T[0,0]))))[2,0]
-                u = self.initial_val+(betaT @( self.__sigma(X = T)-self.__sigma(X = T[0,0])))
+                    return (self.initial_val+(betaT@(self.sigma(X = T)-self.sigma(X = self.x[0,0]))))[2,0]
+                u = self.initial_val+(betaT @( self.sigma(X = T)-self.sigma(X = self.x[0,0])))
                 x = u[0:1,:]
                 y = u[1:2,:]
                 z = u[2:3,:]
@@ -234,7 +235,9 @@ class elm():
         start = time.time()
         
         for i in range(num_iter):
-            J_ = J(betaT).reshape(self.output_dim*self.sample_size,
+            N_ = N(betaT)
+            J_ = J(betaT)
+            J_ = J_.reshape(self.output_dim*self.sample_size,
                                 self.output_dim*self.hidden_units)
             deltay_ = -N(betaT).reshape(self.output_dim*self.sample_size,1)
             delta_beta_ = np.linalg.solve(J_.T@J_+1e-4*np.eye(self.hidden_units*self.output_dim),J_.T@deltay_)
@@ -257,7 +260,7 @@ class elm():
             T0 = np.zeros_like(T)
             X1 = np.ones_like(X)
             def g(X,T):
-                sig_xt = self.__sigma(X,T)
+                sig_xt = self.sigma(X,T)
                 return np.matmul(self.beta.T,sig_xt) # beta has shape [hidden_units x output_dim]
             expr_result = g(X,T)+(X-1)*g(X0,T)- X*g(X1,T)-X*g(X0,T0)+X*g(X1,T0)\
                         -g(X,T0) + g(X0,T0) +np.sin(np.pi*X)
@@ -266,11 +269,11 @@ class elm():
             T = x[:,0:1].reshape(1,-1)
             
             expr_result = (T<=0)*self.history_func(T)+\
-                (T>0)*self.__hidden2output(self.__sigma(X=T)).T
+                (T>0)*self.__hidden2output(self.sigma(X=T)).T
             return expr_result.T
         if self.de_name == 'rober':
             T = x[:,0:1].reshape(1,-1)
-            temp = self.__sigma(X=T)-self.__sigma(X = T[0,0])
+            temp = self.sigma(X=T)-self.sigma(X = self.x[0,0])
             temp2 = self.__hidden2output(temp).T
             expr_result = self.initial_val.reshape(-1,1) +temp2
             return expr_result.T

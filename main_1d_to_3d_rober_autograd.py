@@ -252,8 +252,8 @@ savemat("each_time_interval/"+f"[{start_idx},{end_idx}]_result.mat",saving_dict)
 
 # %%
 # so far result
-prev_start_idxs = [0,2000,2499,2549,2599,2699,2799,2899]#,2499]
-prev_end_idxs =[2001,2500,2550,2600,2700,2800,2900,3001]#,2550]
+prev_start_idxs = [0,2000,2499,2549,2599,2699,2799,2899,3000]#,2499]
+prev_end_idxs =[2001,2500,2550,2600,2700,2800,2900,3001,3101]#,2550]
 
 for i in range(len(prev_start_idxs)):
     prev_result = loadmat(f"each_time_interval/[{prev_start_idxs[i]},{prev_end_idxs[i]}]_result.mat")
