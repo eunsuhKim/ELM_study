@@ -198,12 +198,12 @@ class elm():
                 k1, k2, k3 = self.physics_param
                 # Nonlinear w.r.t. beta
                 def warpper_func_0(T):
-                    return (self.initial_val+T*(betaT@(self.__sigma(X = T))))[0,0]
+                    return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[0,0]
                 def warpper_func_1(T):
-                    return (self.initial_val+T*(betaT@(self.__sigma(X = T))))[1,0]
+                    return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[1,0]
                 def warpper_func_2(T):
-                    return (self.initial_val+T*(betaT@(self.__sigma(X = T))))[2,0]
-                u = self.initial_val+T*(betaT @ self.__sigma(X = T))
+                    return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[2,0]
+                u = self.initial_val+(T-self.x[0])*(betaT @ self.__sigma(X = T))
                 x = u[0:1,:]
                 y = u[1:2,:]
                 z = u[2:3,:]
@@ -272,7 +272,7 @@ class elm():
             T = x[:,0:1].reshape(1,-1)
             temp = self.__sigma(X=T)
             temp2 = self.__hidden2output(temp).T
-            expr_result = self.initial_val.reshape(-1,1) +T*temp2
+            expr_result = self.initial_val.reshape(-1,1) +(T-self.x[0])*temp2
             return expr_result.T
 
     def fit(self, algorithm = 0, num_iter = 100):

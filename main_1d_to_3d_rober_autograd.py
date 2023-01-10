@@ -15,6 +15,7 @@ jax.config.update("jax_enable_x64", True)
 os.environ['CUDA_DEVICE_0_RDER'] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
+
 from scipy.special import roots_legendre, eval_legendre
 import argparse
 #%%
@@ -37,22 +38,32 @@ k3 = 1e4
 
 
 from scipy.io import loadmat 
-file = loadmat("dataset/rober.mat")
-
-upto_here = 51#12 #among 51
-X_test =file['t'].reshape(-1,1)[:upto_here,:]
-U_test =file['y'].reshape(-1,3)[:upto_here,:]
+file = loadmat("dataset/rober_10001.mat")
+prev_start_idx = 2000#0#12-1#0#12-1#0
+prev_end_idx =2500#2001#14#12
+prev_result = loadmat(f"each_time_interval/[{prev_start_idx},{prev_end_idx}]_result.mat")
+# prev_result=None
+start_idx = 2499#12-1
+end_idx = 2550#13 #among 51
+X_test =file['t'].reshape(-1,1)[start_idx:end_idx,:]
+U_test =file['y'].reshape(-1,3)[start_idx:end_idx,:]
 
 
 tl = np.min(X_test)
 tr = np.max(X_test)
 
+
 #%%
 num_test_pts = U_test.shape[0]
 
-x0 = 1.0
-y0 = 0.0
-z0 = 0.0
+if prev_result == None:
+    x0 = 1.0
+    y0 = 0.0
+    z0 = 0.0
+else:
+    x0 = prev_result['x0']
+    y0 = prev_result['y0']
+    z0 = prev_result['z0']
 
 def ROBER_PDE(u,t):
     x, y, z = u
@@ -79,7 +90,7 @@ plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
 if is_save:
-    plt.savefig("figure/rober_goal_xz"+f"[{tl:.5f},{tr:.5f}].pdf",bbox_inches='tight')
+    plt.savefig("figure/rober_goal_xz"+f"[{start_idx},{end_idx}].pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
@@ -90,7 +101,7 @@ plt.legend()
 plt.xscale("log")
 # plt.xlim([1e-5,1e5])
 if is_save:
-    plt.savefig("figure/rober_goal_y"+f"[{tl:.5f},{tr:.5f}].pdf",bbox_inches='tight')
+    plt.savefig("figure/rober_goal_y"+f"[{start_idx},{end_idx}].pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -98,14 +109,14 @@ else:
 seed = int(time.time())
 print('Colloc random seed:',seed)
 onp.random.seed(seed)
-N_colloc =15
+N_colloc =5#15
 
-roots= roots_legendre(N_colloc)[0].reshape(-1,1)
-ts_ = (roots+1)/2*(tr-tl)
+# roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
+# ts_ = (roots+1)/2*(tr-tl)+tl
 # ts_ = np.random.uniform(tl,tr,N_colloc).reshape(-1,1)
 # ts_ = np.linspace(tl,tr,N_colloc).reshape(-1,1)
-X_colloc = ts_
-
+# X_colloc = np.concatenate([np.array([[tl]]),ts_,np.array([[tr]])],axis=0)
+X_colloc = np.logspace(np.log10(tl),np.log10(tr),N_colloc).reshape(-1,1)
 U_colloc = np.zeros_like(X_colloc).repeat(3,1)
 
 
@@ -128,22 +139,22 @@ if is_py:
     
 else:
     opt_num = 0
-    act_func = 'sin'
+    act_func = 'tanh'
 model = elm(x= X_colloc, y=U_colloc, C = options[opt_num]['C'],
-            hidden_units=10, activation_function=act_func,
+            hidden_units=50, activation_function=act_func,
             random_type='uniform', elm_type='de',de_name='rober',
-            quadrature =True,
+            quadrature =False,
             physic_param = [k1,k2,k3], initial_val = u0,
-            random_seed = seed,Wscale=None, bscale=None,fourier_embedding=False)
+            random_seed = seed,Wscale=0.1, bscale=0.1,fourier_embedding=False)
 if is_save:
-    sys.stdout = open("logs/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
+    sys.stdout = open("logs/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)_result_method_{opt_num}_act_func_{model.activation_function}.txt",'w')
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
 beta, train_score, running_time = model.fit(
     algorithm=options[opt_num]['alg'],
-    num_iter =100)#'no_re','solution1'
+    num_iter =2000)#'no_re','solution1'
 print("learned beta:\n", beta)
 print("learned beta shape:\n", beta.shape)
 print("test score:\n", train_score)
@@ -152,7 +163,7 @@ plt.figure()
 plt.semilogy(model.res_hist)
 
 if is_save:
-    plt.savefig("figure/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
+    plt.savefig("figure/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)_residual_history_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -185,7 +196,7 @@ plt.xlabel('t')
 
 
 if is_save:
-    plt.savefig("figure/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+    plt.savefig("figure/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
@@ -201,19 +212,89 @@ plt.plot(X_test,U_pred[:,1:2],'r',ls = 'dotted',label='pred y')
 # plt.plot(X_test,U_pred[:,2:3],'orange',ls='--',label='pred z')
 plt.legend(loc=2)
 plt.xscale("log")
-plt.ylim([-1e-5,1e-4])
+# plt.ylim([-1e-5,1e-4])
 plt.grid()
 plt.xlabel('t')
 
 
 if is_save:
-    plt.savefig("figure/"+model.de_name+f"[{tl:.5f},{tr:.5f}](using_autograd)y_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+    plt.savefig("figure/"+model.de_name+f"[{start_idx},{end_idx}](using_autograd)y_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
 else:
     plt.show()
 #%%
-if is_save:
-    sys.stdout.close()
+print('U_test last: ',U_test[-1])
+print('U_pred last: ',U_pred[-1])
+# if is_save:
+#     sys.stdout.close()
 
-    
+# %%
+
+from scipy.io import savemat
+saving_dict = {}
+saving_dict['t_final']=X_test[-1,0]
+saving_dict['x0']=U_pred[-1,0].item()
+saving_dict['y0']=U_pred[-1,1].item()
+saving_dict['z0']=U_pred[-1,2].item()
+saving_dict['tl']=tl
+saving_dict['tr']=tr
+saving_dict['start_idx']=start_idx
+saving_dict['end_idx']=end_idx
+saving_dict['X_test']=onp.array(X_test)
+saving_dict['X_colloc']=onp.array(X_colloc)
+saving_dict['U_test']=onp.array(U_test)
+saving_dict['U_pred']=onp.array(U_pred)
+saving_dict['W']= onp.array(model.W)
+saving_dict['b']= onp.array(model.b)
+saving_dict['beta']= onp.array(model.beta)
+savemat("each_time_interval/"+f"[{start_idx},{end_idx}]_result.mat",saving_dict)
+
+# %%
+# so far result
+prev_start_idxs = [0,2000,2499]#2000#0#12-1#0#12-1#0
+prev_end_idxs =[2001,2500,2550]#2500#2001#14#12
+
+for i in range(3):
+    prev_result = loadmat(f"each_time_interval/[{prev_start_idxs[i]},{prev_end_idxs[i]}]_result.mat")
+    if i == 0:
+        X_tests = prev_result['X_test']
+        U_tests = prev_result['U_test'] 
+        U_preds = prev_result['U_pred']
+    X_tests = np.concatenate([X_tests,prev_result['X_test'][:-1,:]],axis=0)
+    U_tests = np.concatenate([U_tests,prev_result['U_test'][:-1,:]],axis=0)
+    U_preds = np.concatenate([U_preds,prev_result['U_pred'][:-1,:]],axis=0)
+#%%
+plt.rcParams['font.size'] = 20
+plt.rcParams['lines.linewidth']=3
+plt.figure(figsize=(10,8), facecolor = 'white')
+plt.title(f"ELM for ROBER problem")
+plt.plot(X_tests,U_tests[:,0:1],color='coral',label='exact x')
+# plt.plot(X_test,U_test[:,1:2],color = 'lightgreen',label='exact y')
+plt.plot(X_tests,U_tests[:,2:3],'black',label='exact z')
+plt.plot(X_tests,U_preds[:,0:1],color='b',ls='dashdot',label='pred x')
+# plt.plot(X_test,U_pred[:,1:2],'r',ls = 'dotted',label='pred y')
+plt.plot(X_tests,U_preds[:,2:3],'orange',ls='--',label='pred z')
+plt.legend(loc=2)
+plt.xscale("log")
+plt.grid()
+plt.ylim([-0.1,1.5])
+plt.xlabel('t')
+
+# %%
+plt.rcParams['font.size'] = 20
+plt.rcParams['lines.linewidth']=3
+plt.figure(figsize=(10,8), facecolor = 'white')
+plt.title(f"ELM for ROBER problem")
+# plt.plot(X_test,U_test[:,0:1],color='coral',label='exact x')
+plt.plot(X_tests,U_tests[:,1:2],color = 'lightgreen',label='exact y')
+# plt.plot(X_test,U_test[:,2:3],'black',label='exact z')
+# plt.plot(X_test,U_pred[:,0:1],color='b',ls='dashdot',label='pred x')
+plt.plot(X_tests,U_preds[:,1:2],'r',ls = 'dotted',label='pred y')
+# plt.plot(X_test,U_pred[:,2:3],'orange',ls='--',label='pred z')
+plt.legend(loc=2)
+plt.xscale("log")
+# plt.ylim([-1e-5,1e-4])
+plt.grid()
+plt.xlabel('t')
+
 
 # %%
