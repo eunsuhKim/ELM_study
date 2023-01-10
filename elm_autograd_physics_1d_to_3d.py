@@ -185,11 +185,11 @@ class elm():
             if self.de_name == 'dde_logistic':
                 a = self.physics_param[0]
                 # Nonlinear w.r.t. beta
-                def warpper_func(T):
+                def wrapper_func(T):
                     return (betaT@(self.__sigma(X = T)))[0,0]
                 u = betaT @ self.__sigma(X = T)
                 u_delay= betaT @ self.__sigma(X=T-self.tau)
-                u_p = grad(warpper_func)
+                u_p = grad(wrapper_func)
                 u_p_vmap = vmap(u_p,in_axes=1,out_axes=1)
                 u_t = u_p_vmap(T)
                 expr_physics = u_t - a*u*(1-u_delay)
@@ -197,19 +197,19 @@ class elm():
             if self.de_name == 'rober':
                 k1, k2, k3 = self.physics_param
                 # Nonlinear w.r.t. beta
-                def warpper_func_0(T):
+                def wrapper_func_0(T):
                     return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[0,0]
-                def warpper_func_1(T):
+                def wrapper_func_1(T):
                     return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[1,0]
-                def warpper_func_2(T):
+                def wrapper_func_2(T):
                     return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[2,0]
                 u = self.initial_val+(T-self.x[0])*(betaT @ self.__sigma(X = T))
                 x = u[0:1,:]
                 y = u[1:2,:]
                 z = u[2:3,:]
-                u_0 = grad(warpper_func_0)
-                u_1 = grad(warpper_func_1)
-                u_2 = grad(warpper_func_2)
+                u_0 = grad(wrapper_func_0)
+                u_1 = grad(wrapper_func_1)
+                u_2 = grad(wrapper_func_2)
                 u_0_vmap = vmap(u_0,in_axes=1,out_axes=1)
                 u_1_vmap = vmap(u_1,in_axes=1,out_axes=1)
                 u_2_vmap = vmap(u_2,in_axes=1,out_axes=1)

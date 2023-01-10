@@ -1,0 +1,43 @@
+model options:  {'elm_type': 'de', 'random_type': 'uniform', 'activation_function': 'sin', 'hidden_units': 10, 'C': 1.0, 'one_hot': False, 'physics_param': [0.04, 30000000.0, 10000.0], 'de_name': 'rober', 'tau': None, 'random_seed': 1673348528, 'fourier_embedding': False, 'initial_val': (array([[0.99981731]]), array([[3.6493382e-05]]), array([[0.00014622]])), 'quadrature': True}
+N_colloc:  100
+Train_score when iter=0: 0.29320045844884235
+Train_score when iter=50: 9.216212001404238e-05
+Train_score when iter=100: 5.203508333769633e-05
+Train_score when iter=150: 2.9856382911628427e-05
+Train_score when iter=200: 1.827444485828891e-05
+Train_score when iter=250: 1.259547535994048e-05
+Train_score when iter=300: 1.0263348771301785e-05
+Train_score when iter=350: 9.619598989921867e-06
+Train_score when iter=400: 9.406034535282645e-06
+Train_score when iter=450: 9.308988272491365e-06
+Train_score when iter=500: 9.242609610675176e-06
+Train_score when iter=550: 9.183198673858857e-06
+Train_score when iter=600: 9.127877578682804e-06
+Train_score when iter=650: 9.073802091117128e-06
+Train_score when iter=700: 9.019681746259727e-06
+Train_score when iter=750: 8.965679691761397e-06
+Train_score when iter=800: 8.911886460311085e-06
+Train_score when iter=850: 8.858351911253893e-06
+Train_score when iter=900: 8.805103124342493e-06
+Train_score when iter=950: 8.75215442334672e-06
+146.91939878463745  seconds cost for nonlinear least square.
+learned beta:
+ [[-1.1712801   0.12675335 -0.31961498]
+ [-0.34200142 -0.15908528 -0.12146384]
+ [ 0.75577161  0.85464007 -0.81374386]
+ [-1.04541551  0.57960399  0.75506071]
+ [-0.3521077  -0.28097224  0.31594109]
+ [ 0.45073152  0.92562755  0.58734979]
+ [-0.67008114  0.1595691  -0.29646908]
+ [-0.44386189 -0.41488469  0.55216777]
+ [-0.32243471 -0.23932502  0.21481053]
+ [-0.22479144  0.3413809  -0.04713513]]
+learned beta shape:
+ (10, 3)
+test score:
+ 8.700562783248653e-06
+running time:
+ 147.19630312919617
+predicted result:  (51, 3)
+Relative L2-error norm: 3.5198887552172e-08
+{"N_colloc": "int", "ROBER_PDE": "function", "StandardScaler": "type", "U_colloc": "Array", "U_pred": "Array", "U_test": "ndarray", "X_colloc": "Array", "X_test": "ndarray", "act_func": "str", "argparse": "module", "beta": "Array", "elm": "type", "end_idx": "int", "err": "Array", "eval_legendre": "ufunc", "file": "dict", "get_ipython": "function", "is_py": "bool", "is_save": "bool", "jax": "module", "k1": "float", "k2": "float", "k3": "float", "loadmat": "function", "make_regression": "function", "model": "elm", "np": "module", "num_test_pts": "int", "onp": "module", "opt_num": "int", "options": "dict", "os": "module", "plt": "module", "prev_end_idx": "int", "prev_result": "dict", "prev_start_idx": "int", "roots": "ndarray", "roots_legendre": "function", "running_time": "str", "seed": "int", "start_idx": "int", "sys": "module", "time": "module", "tl": "Array", "tr": "Array", "train_score": "Array", "train_test_split": "function", "ts_": "Array", "u0": "tuple", "x0": "ndarray", "y0": "ndarray", "z0": "ndarray"}

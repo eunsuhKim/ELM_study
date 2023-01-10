@@ -1,0 +1,44 @@
+model options:  {'elm_type': 'de', 'random_type': 'uniform', 'activation_function': 'sin', 'hidden_units': 10, 'C': 1.0, 'one_hot': False, 'physics_param': [0.04, 30000000.0, 10000.0], 'de_name': 'rober', 'tau': None, 'random_seed': 1673349321, 'fourier_embedding': False, 'initial_val': (array([[0.99963583]]), array([[3.6552414e-05]]), array([[0.00032748]])), 'quadrature': True}
+N_colloc:  100
+Train_score when iter=0: 1.5269101699475247
+Train_score when iter=50: 5.37809617949174e-05
+Train_score when iter=100: 1.790873655705451e-05
+Train_score when iter=150: 1.4168694067942031e-05
+Train_score when iter=200: 1.3768001464395785e-05
+Train_score when iter=250: 1.3620260418787031e-05
+Train_score when iter=300: 1.3513350945436864e-05
+Train_score when iter=350: 1.341741447360283e-05
+Train_score when iter=400: 1.3324656087861289e-05
+Train_score when iter=450: 1.3233215543569511e-05
+Train_score when iter=500: 1.314258856769713e-05
+Train_score when iter=550: 1.3052637482931946e-05
+Train_score when iter=600: 1.2963322550576723e-05
+Train_score when iter=650: 1.2874630051128642e-05
+Train_score when iter=700: 1.278655317252865e-05
+Train_score when iter=750: 1.2699086950266961e-05
+Train_score when iter=800: 1.2612226930094193e-05
+Train_score when iter=850: 1.2525968814737333e-05
+Train_score when iter=900: 1.2440308370476545e-05
+Train_score when iter=950: 1.2355241402329607e-05
+146.61486315727234  seconds cost for nonlinear least square.
+learned beta:
+ [[ 0.0997927  -0.26630439  0.34243908]
+ [ 0.24930241 -0.29942355  0.04659934]
+ [-0.61272725 -0.82339099  0.92702053]
+ [-0.03368371  0.2149952  -0.2698406 ]
+ [ 0.78014777 -0.96058485  1.00969877]
+ [ 0.29585042 -0.14115754 -0.17073189]
+ [-0.56257821 -0.88421681  1.34881699]
+ [-0.5091218   0.81482707 -0.71854415]
+ [-0.92092176  1.38759882  0.23969288]
+ [ 0.47682767 -0.7668502  -0.6256612 ]]
+learned beta shape:
+ (10, 3)
+test score:
+ 1.2272447551950263e-05
+running time:
+ 146.88044571876526
+predicted result:  (101, 3)
+Relative L2-error norm: 4.58993351477378e-07
+{"N_colloc": "int", "ROBER_PDE": "function", "StandardScaler": "type", "U_colloc": "Array", "U_pred": "Array", "U_test": "ndarray", "X_colloc": "Array", "X_test": "ndarray", "act_func": "str", "argparse": "module", "beta": "Array", "elm": "type", "end_idx": "int", "err": "Array", "eval_legendre": "ufunc", "file": "dict", "get_ipython": "function", "is_py": "bool", "is_save": "bool", "jax": "module", "k1": "float", "k2": "float", "k3": "float", "loadmat": "function", "make_regression": "function", "model": "elm", "np": "module", "num_test_pts": "int", "onp": "module", "opt_num": "int", "options": "dict", "os": "module", "plt": "module", "prev_end_idx": "int", "prev_result": "dict", "prev_start_idx": "int", "roots": "ndarray", "roots_legendre": "function", "running_time": "str", "savemat": "function", "saving_dict": "dict", "seed": "int", "start_idx": "int", "sys": "module", "time": "module", "tl": "Array", "tr": "Array", "train_score": "Array", "train_test_split": "function", "ts_": "Array", "u0": "tuple", "x0": "ndarray", "y0": "ndarray", "z0": "ndarray"}
+{"N_colloc": "int", "ROBER_PDE": "function", "StandardScaler": "type", "U_colloc": "Array", "U_pred": "Array", "U_preds": "ndarray", "U_test": "ndarray", "U_tests": "ndarray", "X_colloc": "Array", "X_test": "ndarray", "X_tests": "ndarray", "act_func": "str", "argparse": "module", "beta": "Array", "elm": "type", "end_idx": "int", "err": "Array", "eval_legendre": "ufunc", "file": "dict", "get_ipython": "function", "i": "int", "is_py": "bool", "is_save": "bool", "jax": "module", "k1": "float", "k2": "float", "k3": "float", "loadmat": "function", "make_regression": "function", "model": "elm", "np": "module", "num_test_pts": "int", "onp": "module", "opt_num": "int", "options": "dict", "os": "module", "plt": "module", "prev_end_idx": "int", "prev_end_idxs": "list", "prev_result": "dict", "prev_start_idx": "int", "prev_start_idxs": "list", "roots": "ndarray", "roots_legendre": "function", "running_time": "str", "savemat": "function", "saving_dict": "dict", "seed": "int", "start_idx": "int", "sys": "module", "time": "module", "tl": "Array", "tr": "Array", "train_score": "Array", "train_test_split": "function", "ts_": "Array", "u0": "tuple", "x0": "ndarray", "y0": "ndarray", "z0": "ndarray"}

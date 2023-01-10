@@ -1,0 +1,65 @@
+model options:  {'elm_type': 'de', 'random_type': 'uniform', 'activation_function': 'tanh', 'hidden_units': 10, 'C': 1.0, 'one_hot': False, 'physics_param': [0.04, 30000000.0, 10000.0], 'de_name': 'rober', 'tau': None, 'random_seed': 1673328679, 'fourier_embedding': False, 'initial_val': (1.0, 0.0, 0.0), 'quadrature': True}
+N_colloc:  15
+Train_score when iter=0: 6.781354561930547
+Train_score when iter=50: 0.00019132562673030093
+Train_score when iter=100: 3.631361260411279e-05
+Train_score when iter=150: 2.384040803451743e-05
+Train_score when iter=200: 2.266326888344547e-05
+Train_score when iter=250: 2.2146523297161633e-05
+Train_score when iter=300: 2.1629749581116797e-05
+Train_score when iter=350: 2.1128851120984992e-05
+Train_score when iter=400: 2.0646289572986824e-05
+Train_score when iter=450: 2.018172846399431e-05
+Train_score when iter=500: 1.9734522629521374e-05
+Train_score when iter=550: 1.9304013354528024e-05
+Train_score when iter=600: 1.8899383783487374e-05
+Train_score when iter=650: 1.8516417742103852e-05
+Train_score when iter=700: 1.816312604268562e-05
+Train_score when iter=750: 1.7833477459040864e-05
+Train_score when iter=800: 1.7530167844034427e-05
+Train_score when iter=850: 1.7256003077080785e-05
+Train_score when iter=900: 1.7008682426231966e-05
+Train_score when iter=950: 1.6770271248850713e-05
+Train_score when iter=1000: 1.6540429550878913e-05
+Train_score when iter=1050: 1.6318830339819606e-05
+Train_score when iter=1100: 1.6117551489529362e-05
+Train_score when iter=1150: 1.5937826969498176e-05
+Train_score when iter=1200: 1.5764389592567656e-05
+Train_score when iter=1250: 1.5596999877311428e-05
+Train_score when iter=1300: 1.5435427492888552e-05
+Train_score when iter=1350: 1.527945090930065e-05
+Train_score when iter=1400: 1.512885706113121e-05
+Train_score when iter=1450: 1.4983441024034365e-05
+Train_score when iter=1500: 1.484300570363239e-05
+Train_score when iter=1550: 1.4707361536297954e-05
+Train_score when iter=1600: 1.4584532283201268e-05
+Train_score when iter=1650: 1.4466382255333281e-05
+Train_score when iter=1700: 1.4367291055130902e-05
+Train_score when iter=1750: 1.4272150889712075e-05
+Train_score when iter=1800: 1.4180044902155212e-05
+Train_score when iter=1850: 1.4090857925600444e-05
+Train_score when iter=1900: 1.400447919391401e-05
+Train_score when iter=1950: 1.3926183196603807e-05
+291.3683614730835  seconds cost for nonlinear least square.
+learned beta:
+ [[ 0.02330786  0.13725299  0.62756115]
+ [-0.83795368  1.16138213  0.5584243 ]
+ [-0.38306975  0.37334612  0.30412616]
+ [ 0.19587883 -0.32091817 -0.1096194 ]
+ [ 0.01222914  0.72061727  0.29253894]
+ [-0.3077855   0.10927149  0.78853199]
+ [-0.04095979 -0.77708195 -0.66377501]
+ [ 0.4570639   0.42750109  0.36011953]
+ [-0.79313292  0.75011558  0.17963796]
+ [-0.77404521  1.20045114  1.60828406]]
+learned beta shape:
+ (10, 3)
+test score:
+ 1.386407912217352e-05
+running time:
+ 291.60736441612244
+predicted result:  (2001, 3)
+Relative L2-error norm: 9.330585434859951e-09
+{"N_colloc": "int", "ROBER_PDE": "function", "StandardScaler": "type", "U_colloc": "Array", "U_pred": "Array", "U_test": "ndarray", "X_colloc": "Array", "X_test": "ndarray", "act_func": "str", "argparse": "module", "beta": "Array", "elm": "type", "end_idx": "int", "err": "Array", "eval_legendre": "ufunc", "file": "dict", "get_ipython": "function", "is_py": "bool", "is_save": "bool", "jax": "module", "k1": "float", "k2": "float", "k3": "float", "loadmat": "function", "make_regression": "function", "model": "elm", "np": "module", "num_test_pts": "int", "onp": "module", "opt_num": "int", "options": "dict", "os": "module", "plt": "module", "prev_result": "NoneType", "roots": "ndarray", "roots_legendre": "function", "running_time": "str", "savemat": "function", "saving_dict": "dict", "seed": "int", "start_idx": "int", "sys": "module", "time": "module", "tl": "Array", "tr": "Array", "train_score": "Array", "train_test_split": "function", "ts_": "Array", "u0": "tuple", "x0": "float", "y0": "float", "z0": "float"}
+{"N_colloc": "int", "ROBER_PDE": "function", "StandardScaler": "type", "U_colloc": "Array", "U_pred": "Array", "U_test": "ndarray", "X_colloc": "Array", "X_test": "ndarray", "act_func": "str", "argparse": "module", "beta": "Array", "elm": "type", "end_idx": "int", "err": "Array", "eval_legendre": "ufunc", "file": "dict", "get_ipython": "function", "is_py": "bool", "is_save": "bool", "jax": "module", "k1": "float", "k2": "float", "k3": "float", "loadmat": "function", "make_regression": "function", "model": "elm", "np": "module", "num_test_pts": "int", "onp": "module", "opt_num": "int", "options": "dict", "os": "module", "plt": "module", "prev_result": "NoneType", "roots": "ndarray", "roots_legendre": "function", "running_time": "str", "savemat": "function", "saving_dict": "dict", "seed": "int", "start_idx": "int", "sys": "module", "time": "module", "tl": "Array", "tr": "Array", "train_score": "Array", "train_test_split": "function", "ts_": "Array", "u0": "tuple", "x0": "float", "y0": "float", "z0": "float"}
+{"N_colloc": "int", "ROBER_PDE": "function", "StandardScaler": "type", "U_colloc": "Array", "U_pred": "Array", "U_test": "ndarray", "X_colloc": "Array", "X_test": "ndarray", "act_func": "str", "argparse": "module", "beta": "Array", "elm": "type", "end_idx": "int", "err": "Array", "eval_legendre": "ufunc", "file": "dict", "get_ipython": "function", "is_py": "bool", "is_save": "bool", "jax": "module", "k1": "float", "k2": "float", "k3": "float", "loadmat": "function", "make_regression": "function", "model": "elm", "np": "module", "num_test_pts": "int", "onp": "module", "opt_num": "int", "options": "dict", "os": "module", "plt": "module", "prev_result": "NoneType", "roots": "ndarray", "roots_legendre": "function", "running_time": "str", "savemat": "function", "saving_dict": "dict", "seed": "int", "start_idx": "int", "sys": "module", "time": "module", "tl": "Array", "tr": "Array", "train_score": "Array", "train_test_split": "function", "ts_": "Array", "u0": "tuple", "x0": "float", "y0": "float", "z0": "float"}
