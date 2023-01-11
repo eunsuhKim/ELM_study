@@ -281,7 +281,10 @@ plt.xscale("log")
 plt.grid()
 plt.ylim([-0.1,1.5])
 plt.xlabel('t')
-
+if is_save:
+    plt.savefig("figure/rober_whole_sol_xz(using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+else:
+    plt.show()
 # %%
 plt.rcParams['font.size'] = 20
 plt.rcParams['lines.linewidth']=3
@@ -298,6 +301,9 @@ plt.xscale("log")
 # plt.ylim([-1e-5,1e-4])
 plt.grid()
 plt.xlabel('t')
-
+if is_save:
+    plt.savefig("figure/rober_whole_sol_y(using_autograd)xz_result_method_{opt_num}_act_func_{model.activation_function}.pdf")
+else:
+    plt.show()
 
 # %%
