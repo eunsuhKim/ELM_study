@@ -19,7 +19,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from scipy.special import roots_legendre, eval_legendre
 import argparse
 #%%
-is_py = False
+is_py = True
 is_save = True
 
 
@@ -39,12 +39,12 @@ k3 = 1e4
 
 from scipy.io import loadmat 
 file = loadmat("dataset/rober_10001.mat")
-prev_start_idx = 2899#2000#2000#0#12-1#0#12-1#0
-prev_end_idx =3001#2500#2001#14#12
-prev_result = loadmat(f"each_time_interval/[{prev_start_idx},{prev_end_idx}]_result.mat")
-# prev_result=None
-start_idx = 3000#12-1
-end_idx = 3101#13 #among 51
+# prev_start_idx = 0#2000#2000#0#12-1#0#12-1#0
+# prev_end_idx =1001#2500#2001#14#12
+# prev_result = loadmat(f"each_time_interval/[{prev_start_idx},{prev_end_idx}]_result.mat")
+prev_result=None
+start_idx = 0#12-1
+end_idx = 1001#13 #among 51
 X_test =file['t'].reshape(-1,1)[start_idx:end_idx,:]
 U_test =file['y'].reshape(-1,3)[start_idx:end_idx,:]
 
@@ -226,8 +226,8 @@ else:
 #%%
 print('U_test last: ',U_test[-1])
 print('U_pred last: ',U_pred[-1])
-# if is_save:
-#     sys.stdout.close()
+if is_save:
+    sys.stdout.close()
 
 # %%
 
