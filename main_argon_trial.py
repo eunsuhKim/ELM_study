@@ -94,11 +94,13 @@ physics_param['qe'] = scipy.constants.elementary_charge # elementary charge
 physics_param['p'] = 0
 
 def mu_i(E):
-    return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
+    # return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
+    return (0.5740)/(1+0.66*np.sqrt(np.sqrt(np.square(E)*1e-2)))
 def alpha_iz(self,E):
     qe = self.physics_param['qe']
     p = self.physics_param['p']
-    return 2922*p*qe**(-26.62*np.sqrt(p/np.abs(E/100)))
+    # return 2922*p*qe**(-26.62*np.sqrt(p/np.abs(E/100)))
+    return 2922*p*qe**(-26.62*np.sqrt(p/np.sqrt(np.square(1e-2*E))))
 
 physics_param['mu_i']=mu_i
 physics_param['alpha_iz']=alpha_iz

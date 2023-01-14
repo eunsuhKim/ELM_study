@@ -104,11 +104,11 @@ class elm():
 #             weights = np.ones((1,self.sample_size))
         def N(betaTs):
             beta_ni, beta_ne, beta_V, beta_Gamma_i, beta_Gamma_e = betaTs
-            self.betaT_ni = beta_ni.reshape(1,-1)
-            self.betaT_ne = beta_ne.reshape(1,-1)
-            self.betaT_V = beta_V.reshape(1,-1)
-            self.betaT_Gamma_i = beta_Gamma_i.reshape(1,-1)
-            self.betaT_Gamma_e = beta_Gamma_e.reshape(1,-1)
+            self.betaT['ni'] = beta_ni.reshape(1,-1)
+            self.betaT['ne'] = beta_ne.reshape(1,-1)
+            self.betaT['V'] = beta_V.reshape(1,-1)
+            self.betaT['Gamma_i'] = beta_Gamma_i.reshape(1,-1)
+            self.betaT['Gamma_e'] = beta_Gamma_e.reshape(1,-1)
             # CE_ni_s,CE_ne_s,CE_V_s,CE_Gamma_i_s,CE_Gamma_e_s = self.prediction_functions_scalar()
             CE_ni,CE_ne,CE_V,CE_Gamma_i,CE_Gamma_e = self.prediction_functions()
             def CE_ni_s(X,T):
@@ -145,16 +145,19 @@ class elm():
             Gamma_i_x = vmap(Gamma_i_x_s,in_axes=1,out_axes=1)
             Gamma_e_x = vmap(Gamma_e_x_s,in_axes=1,out_axes=1)
             
-            mE_s = grad(CE_V_s, argnums=0)
+            mE_s_ = grad(CE_V_s, argnums=0)
             
             
-            mE = vmap(mE_s)
+            mE_ = vmap(mE_s_)
+            mE = vmap(mE_s_,in_axes=1,out_axes=1)
             def mE_real_scalar(X,T):
-                return mE(X,T)[0]
+                return mE_(X,T)[0]
             mE_x_s = grad(mE_real_scalar,argnums=0)
-            mE_x = vmap(mE_x_s)
+            mE_x = vmap(mE_x_s,in_axes=1,out_axes=1)
             
             # alpha_iz val and mu_i funciton were problematic.
+            # Some vales of Gamma_e and Gamma_i are nan
+            # ni_t,ne_t,V are zero
             res_1 = ni_t(x,t) + Gamma_i_x(x,t) - self.physics_param['alpha_iz'](self,-mE(x,t))*Gamma_e
             res_2 = ne_t(x,t) + Gamma_e_x(x,t) - self.physics_param['alpha_iz'](self,-mE(x,t))*Gamma_e
             res_3 = Gamma_i - self.physics_param['mu_i'](-mE(x,t))*(-mE(x,t)) + self.physics_param['D_i']*ni_x(x,t)
@@ -185,7 +188,12 @@ class elm():
             train_score = np.mean(np.abs(self.N(betaTs)))
             self.res_hist.append(train_score)
             self.betaT['ni'],self.betaT['ne'],self.betaT['V'],self.betaT['Gamma_i'],self.betaT['Gamma_e'] = betaTs
-            if i%50 == 0:
+            self.betaT['ni'] = self.betaT['ni'].reshape(1,-1)
+            self.betaT['ne'] = self.betaT['ne'].reshape(1,-1)
+            self.betaT['V'] = self.betaT['V'].reshape(1,-1)
+            self.betaT['Gamma_i'] = self.betaT['Gamma_i'].reshape(1,-1)
+            self.betaT['Gamma_e'] = self.betaT['Gamma_e'].reshape(1,-1)
+            if i%1 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
         print(time.time()-start,' seconds cost for nonlinear least square.')
@@ -204,11 +212,11 @@ class elm():
         return self.act_func(self.W[token] @ X + self.b[token])
     
     def prediction_functions(self):#, betaT_ni,betaT_ne, betaT_V, betaT_Gamma_i, betaT_Gamma_e):
-        NN_ni = lambda x,t: self.betaT_ni @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='ni')
-        NN_ne = lambda x,t: self.betaT_ne @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='ne')
-        NN_V = lambda x,t: self.betaT_V @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='V')
-        NN_Gamma_i = lambda x,t: self.betaT_Gamma_i @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_i')
-        NN_Gamma_e = lambda x,t: self.betaT_Gamma_e @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_e')
+        NN_ni = lambda x,t: self.betaT['ni'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='ni')
+        NN_ne = lambda x,t: self.betaT['ne'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='ne')
+        NN_V = lambda x,t: self.betaT['V'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='V')
+        NN_Gamma_i = lambda x,t: self.betaT['Gamma_i'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_i')
+        NN_Gamma_e = lambda x,t: self.betaT['Gamma_e'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_e')
         CE_ni = lambda x,t: self.constrained_expression(NN_ni=NN_ni,token='ni')(x,t)
         CE_ne = lambda x,t: self.constrained_expression(NN_ne=NN_ne,token='ne')(x,t)
         CE_V = lambda x,t: self.constrained_expression(NN_V=NN_V,token='V')(x,t)
