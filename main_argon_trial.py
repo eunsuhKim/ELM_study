@@ -170,13 +170,15 @@ U_pred = np.concatenate([ni_pred,ne_pred,E_pred,Gamma_i_pred,Gamma_e_pred],axis=
 # err = np.abs(U_pred-U_test)
 # err = np.linalg.norm(err)/np.linalg.norm(U_test)
 # print("Relative L2-error norm: {}".format(err))
-plt.figure(figsize=(7,35))
-titles = ['ni','ne','E','Gamma_i','Gamma_e']
+plt.figure(figsize=(8,40))
+titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(5):
     plt.subplot(5,1,i+1)
     plt.title(titles[i])
     plt.contourf(X_test[:,1].reshape(nt,nx),X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
     plt.colorbar()
+    plt.xlabel('t')
+    plt.ylabel('x')
 plt.show()
 
 #%%
