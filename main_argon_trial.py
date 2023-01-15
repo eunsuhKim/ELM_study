@@ -57,7 +57,7 @@ random_seed = int(time.time())
 print('Colloc random seed:',random_seed)
 onp.random.seed(random_seed)
 
-N_colloc =10
+N_colloc =100
 
 #roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
 #ts_ = (roots+1)/2*(tr-tl)+tl
@@ -66,12 +66,12 @@ xr= 2e-2
 tl = 0.0
 tr =  4e-4
 L = xr-xl
-# xs = onp.random.uniform(xl,xr,N_colloc)
+xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
-xs = L*onp.ones(N_colloc)
+# xs = L*onp.ones(N_colloc)
 # xs = onp.linspace(xl, xr, N_colloc)
-# ts = onp.random.uniform(tl,tr,N_colloc)
-ts = onp.linspace(tl,tr,N_colloc)
+ts = onp.random.uniform(tl,tr,N_colloc)
+# ts = onp.linspace(tl,tr,N_colloc)
 # ts = onp.zeros(N_colloc)
 # Xs, Ts = onp.meshgrid(xs,ts)
 X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
@@ -83,10 +83,14 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 act_func_name = 'sin'
 
 def random_generating_func_W(size):
-    return onp.random.uniform(-1,1,size)
+    # return onp.random.uniform(-1e5,1e5,size)
+    return 1e8*onp.random.randn(*size)
 def random_generating_func_b(size):
-    return onp.random.uniform(-1,1,size)
-
+    # return onp.random.uniform(-1e5,1e5,size)
+    return 1*onp.random.randn(*size)
+def random_initializing_func_betaT(size):
+    # return onp.random.uniform(-1e5,1e5,size)
+    return 1e8*onp.random.randn(*size)
 p= 1.0
 physics_param = {}
 physics_param['L'] = L
@@ -96,7 +100,7 @@ physics_param['D_e'] = 50/p
 physics_param['D_i'] = 1e-2/p
 physics_param['eps_0'] = scipy.constants.epsilon_0 # vacuume permittivity
 physics_param['qe'] = scipy.constants.elementary_charge # elementary charge
-physics_param['p'] = 0
+physics_param['p'] = p
 
 def mu_i(E):
     return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
@@ -113,8 +117,8 @@ physics_param['alpha_iz']=alpha_iz
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
-                     hidden_units=32, physics_param=physics_param,random_seed=random_seed,
-                     quadrature=False)
+                     hidden_units=256, physics_param=physics_param,random_seed=random_seed,
+                     quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save:
     sys.stdout = open(f"logs/argon_act_func_{model.act_func}.txt",'w')
 
@@ -122,11 +126,16 @@ if is_save:
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =10)
-print("learned beta:\n", model.beta)
-print("learned beta shape:\n", model.beta.shape)
+model.fit(num_iter =20)
+#%%
+print("learned beta:\n", model.betaT['ne'].sum())
+print("learned beta:\n", model.betaT['ni'].sum())
+print("learned beta:\n", model.betaT['V'].sum())
+print("learned beta:\n", model.betaT['Gamma_i'].sum())
+print("learned beta:\n", model.betaT['Gamma_e'].sum())
+# print("learned beta shape:\n", model.betaT.shape)
 print("test score:\n", model.train_score)
-
+#%%
 plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
@@ -136,11 +145,19 @@ else:
     plt.show()
 
 #%%
-
-
+#%%
+nx = 20
+nt = 20
+xs_test = np.linspace(xl,xr,nx)
+ts_test = np.linspace(tl,tr,nt)
+Xs_test,Ts_test = np.meshgrid(xs_test,ts_test)
+X_test = np.concatenate([Xs_test.flatten().reshape(-1,1),Ts_test.flatten().reshape(-1,1)],axis=1)
 # The following prediciton functions have arguments x, t.
 ni, ne,V,Gamma_i,Gamma_e = model.prediction_functions()
-E = grad(V,argnum=0)
+def V_s(x,t):
+    return V(x,t)[0,0]
+E_s = grad(V_s,argnums=0)
+E = vmap(E_s,in_axes=1,out_axes=1)
 
 ni_pred = ni(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
 ne_pred = ne(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
@@ -153,11 +170,12 @@ U_pred = np.concatenate([ni_pred,ne_pred,E_pred,Gamma_i_pred,Gamma_e_pred],axis=
 # err = np.abs(U_pred-U_test)
 # err = np.linalg.norm(err)/np.linalg.norm(U_test)
 # print("Relative L2-error norm: {}".format(err))
-plt.figure(figsize=(3,15))
-
+plt.figure(figsize=(7,35))
+titles = ['ni','ne','E','Gamma_i','Gamma_e']
 for i in range(5):
-    plt.subplot(5,1,i)
-    plt.contourf(X_test[:,1],X_test[:,0],U_pred[:,i].reshape(nt,nx),100)
+    plt.subplot(5,1,i+1)
+    plt.title(titles[i])
+    plt.contourf(X_test[:,1].reshape(nt,nx),X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
     plt.colorbar()
 plt.show()
 
