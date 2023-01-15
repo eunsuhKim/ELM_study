@@ -65,9 +65,14 @@ xl= 0.0
 xr= 2e-2
 tl = 0.0
 tr =  4e-4
-L = xl-xr
-xs = onp.random.uniform(xl,xr,N_colloc)
-ts = onp.random.uniform(tl,tr,N_colloc)
+L = xr-xl
+# xs = onp.random.uniform(xl,xr,N_colloc)
+# xs = onp.zeros(N_colloc)
+xs = L*onp.ones(N_colloc)
+# xs = onp.linspace(xl, xr, N_colloc)
+# ts = onp.random.uniform(tl,tr,N_colloc)
+ts = onp.linspace(tl,tr,N_colloc)
+# ts = onp.zeros(N_colloc)
 # Xs, Ts = onp.meshgrid(xs,ts)
 X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 
@@ -94,13 +99,13 @@ physics_param['qe'] = scipy.constants.elementary_charge # elementary charge
 physics_param['p'] = 0
 
 def mu_i(E):
-    # return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
-    return (0.5740)/(1+0.66*np.sqrt(np.sqrt(np.square(E)*1e-2)))
+    return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
+    # return (0.5740)/(1+0.66*np.sqrt(np.sqrt(np.square(E)*1e-2)))
 def alpha_iz(self,E):
     qe = self.physics_param['qe']
     p = self.physics_param['p']
-    # return 2922*p*qe**(-26.62*np.sqrt(p/np.abs(E/100)))
-    return 2922*p*qe**(-26.62*np.sqrt(p/np.sqrt(np.square(1e-2*E))))
+    return 2922*p*qe**(-26.62*np.sqrt(p/np.abs(E/100)))
+    # return 2922*p*qe**(-26.62*np.sqrt(p/np.sqrt(np.square(1e-2*E))))
 
 physics_param['mu_i']=mu_i
 physics_param['alpha_iz']=alpha_iz
