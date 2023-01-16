@@ -24,7 +24,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import scipy
 from scipy.special import roots_legendre, eval_legendre
 import argparse
-plt.rcParams['font.size'] = 20
+plt.rcParams['font.size'] = 15#20
 plt.rcParams['lines.linewidth']=3
 # plt.rcParams['figure.figsize']=(3,15)
 
@@ -83,11 +83,11 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 act_func_name = 'sin'
 
 def random_generating_func_W(size):
-    # return onp.random.uniform(-1,1,size)
-    return 1*onp.random.randn(*size)
+    return onp.random.uniform(-1,1,size)
+    # return 1*onp.random.randn(*size)
 def random_generating_func_b(size):
-    # return onp.random.uniform(-1,1,size)
-    return 1*onp.random.randn(*size)
+    return onp.random.uniform(-1,1,size)
+    # return 1*onp.random.randn(*size)
 def random_initializing_func_betaT(size):
     return onp.random.uniform(-1e5,1e5,size)
     # return 1e5*onp.random.randn(*size)
@@ -117,7 +117,7 @@ physics_param['alpha_iz']=alpha_iz
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
-                     hidden_units=10, physics_param=physics_param,random_seed=random_seed,
+                     hidden_units=100, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save:
     sys.stdout = open(f"logs/argon_act_func_{model.act_func}.txt",'w')
@@ -171,7 +171,7 @@ U_pred = np.concatenate([ni_pred,ne_pred,E_pred,Gamma_i_pred,Gamma_e_pred],axis=
 # err = np.abs(U_pred-U_test)
 # err = np.linalg.norm(err)/np.linalg.norm(U_test)
 # print("Relative L2-error norm: {}".format(err))
-plt.figure(figsize=(8,40))
+plt.figure(figsize=(2,40))
 titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(5):
     plt.subplot(5,1,i+1)
