@@ -1,5 +1,5 @@
 #%%
-from elm_argon_class_scaled_problem import elm
+from elm_argon_class_scaled_neural_net import elm
 import numpy as onp
 import time
 import jax.numpy as np
@@ -121,7 +121,7 @@ model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      hidden_units=10, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save_txt:
-    sys.stdout = open(f"logs/argon_scaled_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
+    sys.stdout = open(f"logs/argon_scaled_nn_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
 
 #%%
 print("model options: ",model.option_dict)
@@ -144,7 +144,7 @@ plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
 if is_save_figure:
-    plt.savefig(f"figure/argon_scaled_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scaled_nn_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -185,7 +185,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_scaled_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scaled_nn_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -198,7 +198,7 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_scaled_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scaled_nn_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
