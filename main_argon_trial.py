@@ -31,7 +31,8 @@ plt.rcParams['lines.linewidth']=3
 #%%
 
 is_py = False
-is_save = True
+is_save_figure = True
+is_save_txt = False
 #%%
 # Load test data
 
@@ -89,7 +90,7 @@ def random_generating_func_b(size):
     return onp.random.uniform(-1,1,size)
     # return 1*onp.random.randn(*size)
 def random_initializing_func_betaT(size):
-    return onp.random.uniform(-1e5,1e5,size)
+    return onp.random.uniform(-1e15,1e15,size)
     # return 1e5*onp.random.randn(*size)
 p= 1.0
 physics_param = {}
@@ -119,14 +120,14 @@ model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
                      hidden_units=100, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
-if is_save:
-    sys.stdout = open(f"logs/argon_act_func_{model.act_func}.txt",'w')
+if is_save_txt:
+    sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}.txt",'w')
 
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =100)
+model.fit(num_iter =10)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -140,8 +141,8 @@ print("test score:\n", model.train_score)
 plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
-if is_save:
-    plt.savefig(f"figure/argon_res_hist_act_func_{model.act_func}.pdf",bbox_inches='tight')
+if is_save_figure:
+    plt.savefig(f"figure/argon_res_hist_act_func_{model.act_func_name}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -171,18 +172,31 @@ U_pred = np.concatenate([ni_pred,ne_pred,E_pred,Gamma_i_pred,Gamma_e_pred],axis=
 # err = np.abs(U_pred-U_test)
 # err = np.linalg.norm(err)/np.linalg.norm(U_test)
 # print("Relative L2-error norm: {}".format(err))
-plt.figure(figsize=(50,6))
+plt.figure(figsize=(30,6))
 titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
-for i in range(5):
-    plt.subplot(1,5,i+1)
+for i in range(3):
+    plt.subplot(1,3,i+1)
     plt.title(titles[i])
     plt.contourf(X_test[:,1].reshape(nt,nx),
     X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
     plt.colorbar()
     plt.xlabel('t')
     plt.ylabel('x')
-if is_save:
-    plt.savefig(f"figure/argon_prediction_act_func_{model.act_func}.pdf",bbox_inches='tight')
+if is_save_figure:
+    plt.savefig(f"figure/argon_prediction_ni_ne_E_act_func_{model.act_func_name}.pdf",bbox_inches='tight')
+else:
+    plt.show()
+plt.figure(figsize=(20,8))
+for i in range(3,5):
+    plt.subplot(1,2,i-2)
+    plt.title(titles[i])
+    plt.contourf(X_test[:,1].reshape(nt,nx),
+    X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
+    plt.colorbar()
+    plt.xlabel('t')
+    plt.ylabel('x')
+if is_save_figure:
+    plt.savefig(f"figure/argon_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -207,7 +221,7 @@ for i in range(0,15,3):
 plt.show()
 
 if is_save:
-    plt.savefig(f"figure/argon_result_act_func_{model.act_func}.pdf")
+    plt.savefig(f"figure/argon_result_act_func_{model.act_func_name}.pdf")
 else:
     plt.show()
 
