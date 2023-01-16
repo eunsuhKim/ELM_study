@@ -153,25 +153,25 @@ class elm():
             Gamma_i_x = vmap(Gamma_i_x_s,in_axes=1,out_axes=1)
             Gamma_e_x = vmap(Gamma_e_x_s,in_axes=1,out_axes=1)
             
-            mE_s_ = grad(CE_V_s, argnums=0)
+            dVdx_s_ = grad(CE_V_s, argnums=0)
             
             
-            mE_ = vmap(mE_s_)
-            mE = vmap(mE_s_,in_axes=1,out_axes=1)
+            dVdx_ = vmap(dVdx_s_)
+            dVdx = vmap(dVdx_s_,in_axes=1,out_axes=1)
             def mE_real_scalar(X,T):
-                return mE_(X,T)[0]
-            mE_x_s = grad(mE_real_scalar,argnums=0)
-            mE_x = vmap(mE_x_s,in_axes=1,out_axes=1)
+                return dVdx_(X,T)[0]
+            dVdx_x_s = grad(mE_real_scalar,argnums=0)
+            dVdx_x = vmap(dVdx_x_s,in_axes=1,out_axes=1)
             
             # alpha_iz val and mu_i funciton were problematic.
             # Some vales of Gamma_e and Gamma_i are nan
             # ni_t,ne_t,V are zero
-            res_1 = ni_t(x,t) + Gamma_i_x(x,t) - self.physics_param['alpha_iz'](self,-mE(x,t))*Gamma_e
-            res_2 = ne_t(x,t) + Gamma_e_x(x,t) - self.physics_param['alpha_iz'](self,-mE(x,t))*Gamma_e
-            res_3 = Gamma_i - self.physics_param['mu_i'](-mE(x,t))*(-mE(x,t)) + self.physics_param['D_i']*ni_x(x,t)
-            # res_4 and res__5 only not NAN
-            res_4 = Gamma_e + self.physics_param['mu_e']*(-mE(x,t))*ne + self.physics_param['D_e']*ne_x(x,t)
-            res_5 = -mE_x(x,t) - self.physics_param['qe']/self.physics_param['eps_0'] *(ni-ne)
+            res_1 = ni_t(x,t) + Gamma_i_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
+            res_2 = ne_t(x,t) + Gamma_e_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
+            res_3 = Gamma_i - self.physics_param['mu_i'](-dVdx(x,t))*(-dVdx(x,t)) + self.physics_param['D_i']*ni_x(x,t)
+            # res_4 and res__5 only not NAN1
+            res_4 = Gamma_e + self.physics_param['mu_e']*(-dVdx(x,t))*ne + self.physics_param['D_e']*ne_x(x,t)
+            res_5 = -dVdx_x(x,t) - self.physics_param['qe']*self.physics_param['eps_0']**(-1) *(ni-ne)
             res_mat = np.concatenate([res_1,res_2,res_3,res_4,res_5],axis=0)
             return res_mat
         self.N = N
@@ -201,7 +201,7 @@ class elm():
             self.betaT['V'] = self.betaT['V'].reshape(1,-1)
             self.betaT['Gamma_i'] = self.betaT['Gamma_i'].reshape(1,-1)
             self.betaT['Gamma_e'] = self.betaT['Gamma_e'].reshape(1,-1)
-            if i%1 == 0:
+            if i%10 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
         print(time.time()-start,' seconds cost for nonlinear least square.')
@@ -252,31 +252,33 @@ class elm():
 
                 L = self.physics_param['L']
                 # return NN_V(x,t) - NN_V(np.zeros_like(x),t) - NN_V(x,np.zeros_like(t)) + NN_V(np.zeros_like(x),np.zeros_like(t)) + 5e4 * x -1e3
-                return NN_V(x,t) +(L-x)/L*(NN_V(np.zeros_like(x),np.zeros_like(t))-NN_V(np.zeros_like(x),t))\
-                    + x/L*(NN_V(L*np.ones_like(x),np.zeros_like(t))-NN_V(L*np.ones_like(x),t))-NN_V(x,np.zeros_like(t))\
+                return NN_V(x,t) +(L-x)*L**(-1)*(NN_V(np.zeros_like(x),np.zeros_like(t))-NN_V(np.zeros_like(x),t))\
+                    + x*L**(-1)*(NN_V(L*np.ones_like(x),np.zeros_like(t))-NN_V(L*np.ones_like(x),t))-NN_V(x,np.zeros_like(t))\
                         +(5*1e4*x-1e3)
             return V
         if token == 'Gamma_i':
             def Gamma_i(x,t):
                 def CE_V_s(X,T):
                     return CE_V(X,T)[0,0]
-                mE = grad(CE_V_s,argnums=0)
+                dVdx = grad(CE_V_s,argnums=0)
                 if len(x.shape) == 2:
-                    mE_ = vmap(mE,in_axes=1,out_axes=1)
-                    mE = mE_
+                    dVdx_ = vmap(dVdx,in_axes=1,out_axes=1)
+                    dVdx = dVdx_
                 L = self.physics_param['L']
-                return NN_Gamma_i(x,t) + (L-x)/L * (-self.physics_param['mu_i'](-mE(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*mE(np.zeros_like(x),t)\
-                                - NN_Gamma_i(np.zeros_like(x),t)) - (x/L) * NN_Gamma_i(L*np.ones_like(x),t)
+                mu_i = self.physics_param['mu_i']
+                return NN_Gamma_i(x,t) \
+                    + (L-x)*L**(-1) * (-mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
+                    - NN_Gamma_i(np.zeros_like(x),t)) - (x*L**(-1)) * NN_Gamma_i(L*np.ones_like(x),t)
             return Gamma_i
         if token == 'Gamma_e':
             def Gamma_e(x,t):
                 def CE_V_s(X,T):
                     return CE_V(X,T)[0,0]
-                mE = grad(CE_V_s,argnums=0)
+                dVdx = grad(CE_V_s,argnums=0)
                 if len(x.shape) == 2:
-                    mE_ = vmap(mE,in_axes=1,out_axes=1)
-                    mE = mE_
+                    dVdx_ = vmap(dVdx,in_axes=1,out_axes=1)
+                    dVdx = dVdx_
                 L = self.physics_param['L']
-                return NN_Gamma_e(x,t) + (L-x)/L * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
-                        + (x/L)*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * mE(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                        + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
             return Gamma_e

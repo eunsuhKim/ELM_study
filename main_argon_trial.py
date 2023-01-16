@@ -24,14 +24,14 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import scipy
 from scipy.special import roots_legendre, eval_legendre
 import argparse
-plt.rcParams['font.size'] = 15#20
+plt.rcParams['font.size'] = 20
 plt.rcParams['lines.linewidth']=3
 # plt.rcParams['figure.figsize']=(3,15)
 
 #%%
 
 is_py = False
-is_save = False
+is_save = True
 #%%
 # Load test data
 
@@ -64,7 +64,7 @@ N_colloc =100
 xl= 0.0
 xr= 2e-2
 tl = 0.0
-tr =  1e-10#4e-4
+tr =  1e-8#4e-4
 L = xr-xl
 xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
@@ -103,12 +103,12 @@ physics_param['qe'] = scipy.constants.elementary_charge # elementary charge
 physics_param['p'] = p
 
 def mu_i(E):
-    return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
+    return (0.5740)*(1+0.66*np.sqrt(np.abs(E)*1e-2))**(-1)
     # return (0.5740)/(1+0.66*np.sqrt(np.sqrt(np.square(E)*1e-2)))
 def alpha_iz(self,E):
     qe = self.physics_param['qe']
     p = self.physics_param['p']
-    return 2922*p*qe**(-26.62*np.sqrt(p/np.abs(E/100)))
+    return 2922*p*qe**(-26.62*np.sqrt(p*np.abs(1e-2*E)**(-1)))
     # return 2922*p*qe**(-26.62*np.sqrt(p/np.sqrt(np.square(1e-2*E))))
 
 physics_param['mu_i']=mu_i
@@ -126,7 +126,7 @@ if is_save:
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =10)
+model.fit(num_iter =100)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -141,7 +141,7 @@ plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
 if is_save:
-    plt.savefig(f"figure/argon_res_hist_act_func_{model.act_func}.pdf")
+    plt.savefig(f"figure/argon_res_hist_act_func_{model.act_func}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -171,17 +171,20 @@ U_pred = np.concatenate([ni_pred,ne_pred,E_pred,Gamma_i_pred,Gamma_e_pred],axis=
 # err = np.abs(U_pred-U_test)
 # err = np.linalg.norm(err)/np.linalg.norm(U_test)
 # print("Relative L2-error norm: {}".format(err))
-plt.figure(figsize=(2,40))
+plt.figure(figsize=(50,6))
 titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(5):
-    plt.subplot(5,1,i+1)
+    plt.subplot(1,5,i+1)
     plt.title(titles[i])
     plt.contourf(X_test[:,1].reshape(nt,nx),
     X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
     plt.colorbar()
     plt.xlabel('t')
     plt.ylabel('x')
-plt.show()
+if is_save:
+    plt.savefig(f"figure/argon_prediction_act_func_{model.act_func}.pdf",bbox_inches='tight')
+else:
+    plt.show()
 
 #%%
 #%%
