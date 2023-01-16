@@ -1,5 +1,5 @@
 #%%
-from elm_argon_class import elm
+from elm_argon_class_scaled_problem import elm
 import numpy as onp
 import time
 import jax.numpy as np
@@ -65,15 +65,15 @@ N_colloc =100
 xl= 0.0
 xr= 2e-2
 tl = 0.0
-tr =  1e-8#4e-4
+tr =  2e-10#4e-4
 L = xr-xl
 xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
 # xs = L*onp.ones(N_colloc)
 # xs = onp.linspace(xl, xr, N_colloc)
-# ts = onp.random.uniform(tl,tr,N_colloc)
+ts = onp.random.uniform(tl,tr,N_colloc)
 # ts = onp.linspace(tl,tr,N_colloc)
-ts = onp.zeros(N_colloc)
+# ts = onp.zeros(N_colloc)
 # Xs, Ts = onp.meshgrid(xs,ts)
 X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 
@@ -81,17 +81,17 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 # build model and train
 
 
-act_func_name = 'tanh' #sigmoid,sin
+act_func_name = 'sin' #sigmoid,sin
 
 def random_generating_func_W(size):
-    return onp.random.uniform(-1,1,size)
-    # return 1*onp.random.randn(*size)
+    # return 1e5*onp.random.uniform(-1,1,size)
+    return 1*onp.random.randn(*size)
 def random_generating_func_b(size):
-    return onp.random.uniform(-1,1,size)
-    # return 1*onp.random.randn(*size)
+    # return onp.random.uniform(-1,1,size)
+    return 1*onp.random.randn(*size)
 def random_initializing_func_betaT(size):
-    return onp.random.uniform(-1e15,1e15,size)
-    # return 1e5*onp.random.randn(*size)
+    # return 1e5*onp.random.uniform(-1,1,size)
+    return 1*onp.random.randn(*size)
 p= 1.0
 physics_param = {}
 physics_param['L'] = L
@@ -118,16 +118,16 @@ physics_param['alpha_iz']=alpha_iz
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
-                     hidden_units=100, physics_param=physics_param,random_seed=random_seed,
+                     hidden_units=5, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save_txt:
-    sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
+    sys.stdout = open(f"logs/argon_scaled_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
 
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =10)
+model.fit(num_iter =5)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -136,13 +136,15 @@ print("learned beta:\n", model.betaT['Gamma_i'].sum())
 print("learned beta:\n", model.betaT['Gamma_e'].sum())
 # print("learned beta shape:\n", model.betaT.shape)
 print("test score:\n", model.train_score)
+
+
 #%%
 
 plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
 if is_save_figure:
-    plt.savefig(f"figure/argon_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scaled_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -183,7 +185,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scaled_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -196,7 +198,7 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scaled_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -221,7 +223,7 @@ for i in range(0,15,3):
 plt.show()
 
 if is_save:
-    plt.savefig(f"figure/argon_result_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf")
+    plt.savefig(f"figure/argon_scaled_result_act_func_{model.act_func_name}.pdf")
 else:
     plt.show()
 
@@ -243,4 +245,4 @@ saving_dict['U_pred']=onp.array(U_pred)
 saving_dict['W']= onp.array(model.W)
 saving_dict['b']= onp.array(model.b)
 saving_dict['beta']= onp.array(model.beta)
-savemat(f"each_time_interval/argon_result_act_func_{model.act_func}_N_colloc_{N_colloc}.mat",saving_dict)
+savemat(f"each_time_interval/argon_scaled_result_act_func_{model.act_func}_N_colloc_{N_colloc}.mat",saving_dict)
