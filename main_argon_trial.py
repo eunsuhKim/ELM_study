@@ -19,7 +19,7 @@ from jax import jacfwd, vmap, grad, jvp, vjp
 
 jax.config.update("jax_enable_x64", True)
 os.environ['CUDA_DEVICE_0_RDER'] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import scipy
 from scipy.special import roots_legendre, eval_legendre
@@ -64,15 +64,15 @@ N_colloc =100
 xl= 0.0
 xr= 2e-2
 tl = 0.0
-tr =  4e-4
+tr =  1e-10#4e-4
 L = xr-xl
 xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
 # xs = L*onp.ones(N_colloc)
 # xs = onp.linspace(xl, xr, N_colloc)
-ts = onp.random.uniform(tl,tr,N_colloc)
+# ts = onp.random.uniform(tl,tr,N_colloc)
 # ts = onp.linspace(tl,tr,N_colloc)
-# ts = onp.zeros(N_colloc)
+ts = onp.zeros(N_colloc)
 # Xs, Ts = onp.meshgrid(xs,ts)
 X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 
@@ -83,14 +83,14 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 act_func_name = 'sin'
 
 def random_generating_func_W(size):
-    # return onp.random.uniform(-1e5,1e5,size)
-    return 1e8*onp.random.randn(*size)
+    # return onp.random.uniform(-1,1,size)
+    return 1*onp.random.randn(*size)
 def random_generating_func_b(size):
-    # return onp.random.uniform(-1e5,1e5,size)
+    # return onp.random.uniform(-1,1,size)
     return 1*onp.random.randn(*size)
 def random_initializing_func_betaT(size):
-    # return onp.random.uniform(-1e5,1e5,size)
-    return 1e8*onp.random.randn(*size)
+    return onp.random.uniform(-1e5,1e5,size)
+    # return 1e5*onp.random.randn(*size)
 p= 1.0
 physics_param = {}
 physics_param['L'] = L
@@ -117,7 +117,7 @@ physics_param['alpha_iz']=alpha_iz
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
-                     hidden_units=256, physics_param=physics_param,random_seed=random_seed,
+                     hidden_units=10, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save:
     sys.stdout = open(f"logs/argon_act_func_{model.act_func}.txt",'w')
@@ -126,7 +126,7 @@ if is_save:
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =20)
+model.fit(num_iter =10)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -136,6 +136,7 @@ print("learned beta:\n", model.betaT['Gamma_e'].sum())
 # print("learned beta shape:\n", model.betaT.shape)
 print("test score:\n", model.train_score)
 #%%
+
 plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
@@ -144,10 +145,10 @@ if is_save:
 else:
     plt.show()
 
+
 #%%
-#%%
-nx = 20
-nt = 20
+nx = 100
+nt = 40
 xs_test = np.linspace(xl,xr,nx)
 ts_test = np.linspace(tl,tr,nt)
 Xs_test,Ts_test = np.meshgrid(xs_test,ts_test)
@@ -175,12 +176,15 @@ titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(5):
     plt.subplot(5,1,i+1)
     plt.title(titles[i])
-    plt.contourf(X_test[:,1].reshape(nt,nx),X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
+    plt.contourf(X_test[:,1].reshape(nt,nx),
+    X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
     plt.colorbar()
     plt.xlabel('t')
     plt.ylabel('x')
 plt.show()
 
+#%%
+#%%
 #%%
 plt.figure(figsize=(8,10))
 

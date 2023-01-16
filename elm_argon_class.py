@@ -238,27 +238,37 @@ class elm():
                               ):
         if token == 'ni':
             def ni(x,t):
-                return 1e16 + (t-0.0)* NN_ni(x,t)
+                # return 1e16 + (t-0.0)* NN_ni(x,t)
+                return NN_ni(x,t)+1e16-NN_ni(x,np.zeros_like(t))
             return ni
         if token == 'ne':
             def ne(x,t):
-                return 1e16 + (t-0.0)* NN_ne(x,t)
+                # return 1e16 + (t-0.0)* NN_ne(x,t)
+                return NN_ne(x,t)+1e16-NN_ne(x,np.zeros_like(t))
+
             return ne
         if token == 'V':
             def V(x,t):
-                return NN_V(x,t) - NN_V(np.zeros_like(x),t) - NN_V(x,np.zeros_like(t)) + NN_V(np.zeros_like(x),np.zeros_like(t)) + 5e4 * x -1e3
+
+                L = self.physics_param['L']
+                # return NN_V(x,t) - NN_V(np.zeros_like(x),t) - NN_V(x,np.zeros_like(t)) + NN_V(np.zeros_like(x),np.zeros_like(t)) + 5e4 * x -1e3
+                return NN_V(x,t) +(L-x)/L*(NN_V(np.zeros_like(x),np.zeros_like(t))-NN_V(np.zeros_like(x),t))\
+                    + x/L*(NN_V(L*np.ones_like(x),np.zeros_like(t))-NN_V(L*np.ones_like(x),t))-NN_V(x,np.zeros_like(t))\
+                        +(5*1e4*x-1e3)
             return V
         if token == 'Gamma_i':
             def Gamma_i(x,t):
                 def CE_V_s(X,T):
                     return CE_V(X,T)[0,0]
-                mE = grad(CE_V_s,argnums=0)
+                dVdx = grad(CE_V_s,argnums=0)
                 if len(x.shape) == 2:
-                    mE_ = vmap(mE,in_axes=1,out_axes=1)
-                    mE = mE_
+                    dVdx_ = vmap(dVdx,in_axes=1,out_axes=1)
+                    dVdx = dVdx_
                 L = self.physics_param['L']
-                return NN_Gamma_i(x,t) + (L-x)/L * (-self.physics_param['mu_i'](-mE(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*mE(np.zeros_like(x),t)\
-                                - NN_Gamma_i(np.zeros_like(x),t)) - (x/L) * NN_Gamma_i(L*np.ones_like(x),t)
+                return NN_Gamma_i(x,t) -NN_Gamma_i(x,np.zeros_like(t))\
+                    + (L-x)/L * (-self.physics_param['mu_i'](-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
+                    - NN_Gamma_i(np.zeros_like(x),t)+NN_Gamma_i(np.zeros_like(x),np.zeros_like(t))) \
+                    + (x/L) * (-NN_Gamma_i(L*np.ones_like(x),t)+NN_Gamma_i(L*np.ones_like(x),np.zeros_like(t)))
             return Gamma_i
         if token == 'Gamma_e':
             def Gamma_e(x,t):
@@ -269,6 +279,10 @@ class elm():
                     mE_ = vmap(mE,in_axes=1,out_axes=1)
                     mE = mE_
                 L = self.physics_param['L']
-                return NN_Gamma_e(x,t) + (L-x)/L * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
-                        + (x/L)*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * mE(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                gamma = self.physics_param['gamma']
+                mu_e = self.physics_param['mu_e']
+                return NN_Gamma_e(x,t) -NN_Gamma_e(x,np.zeros_like(t))\
+                    + (L-x)/L * (-gamma * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)+NN_Gamma_e(np.zeros_like(x),np.zeros_like(t))) \
+                    + (x/L)*(mu_e * CE_ne(L*np.ones_like(x),t) * mE(L*np.ones_like(x),t)\
+                        -NN_Gamma_e(L*np.ones_like(x),t)+NN_Gamma_e(L*np.ones_like(x),np.zeros_like(t)))
             return Gamma_e
