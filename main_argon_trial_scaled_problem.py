@@ -91,7 +91,7 @@ def random_generating_func_b(size):
     return 1*onp.random.randn(*size)
 def random_initializing_func_betaT(size):
     # return 1*onp.random.uniform(-1,1,size)
-    return 1e5*onp.random.randn(*size)
+    return 1*onp.random.randn(*size)
 p= 1.0
 physics_param = {}
 physics_param['L'] = L
