@@ -24,13 +24,13 @@ class elm():
     def __init__(self,X=None,random_generating_func_W=None,
                      random_generating_func_b=None,act_func_name='sin',
                      hidden_units=32, physics_param=None,random_seed=None,
-                     quadrature=True,random_initializing_func_betaT=None):
+                     quadrature=True,init_beta_scales=None,random_initializing_func_betaT=None):
         # save and print options
         option_dict = {}
         option_dict['random_generating_func_W'] = random_generating_func_W
         option_dict['random_generating_func_b'] = random_generating_func_b
         option_dict['random_initializing_func_betaT'] = random_initializing_func_betaT
-
+        option_dict['init_beta_scales']=init_beta_scales
         option_dict['act_func_name'] = act_func_name
         option_dict['hidden_units'] = hidden_units
         option_dict['physics_param']=physics_param
@@ -45,6 +45,7 @@ class elm():
         self.random_generating_func_W = random_generating_func_W
         self.random_generating_func_b = random_generating_func_b
         self.random_initializing_func_betaT = random_initializing_func_betaT
+        self.init_beta_scales = init_beta_scales
         self.act_func_name = act_func_name
         self.hidden_units = hidden_units
         self.input_dim = X.shape[0]
@@ -96,11 +97,11 @@ class elm():
         # self.betaT['V'] = np.array(onp.random.randn(1,self.hidden_units))
         # self.betaT['Gamma_i'] = np.array(onp.random.randn(1,self.hidden_units))
         # self.betaT['Gamma_e'] = np.array(onp.random.randn(1,self.hidden_units))
-        self.betaT['ni'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['ne'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['V'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['Gamma_i'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['Gamma_e'] = self.random_initializing_func_betaT((1,self.hidden_units))
+        self.betaT['ni'] = self.random_initializing_func_betaT(self,'ni',(1,self.hidden_units))
+        self.betaT['ne'] = self.random_initializing_func_betaT(self,'ne',(1,self.hidden_units))
+        self.betaT['V'] = self.random_initializing_func_betaT(self,'V',(1,self.hidden_units))
+        self.betaT['Gamma_i'] = self.random_initializing_func_betaT(self,'Gamma_i',(1,self.hidden_units))
+        self.betaT['Gamma_e'] = self.random_initializing_func_betaT(self,'Gamma_e',(1,self.hidden_units))
         
     def make_beta(self,num_iter = 10):
         x, t = self.X
@@ -171,7 +172,7 @@ class elm():
             res_3 = 1e4*Gamma_i - self.physics_param['mu_i'](-dVdx(x,t))*(-dVdx(x,t)) + self.physics_param['D_i']*ni_x(x,t)
             # res_4 and res__5 only not NAN1
             res_4 = 1e4*Gamma_e + self.physics_param['mu_e']*(-dVdx(x,t))*ne + self.physics_param['D_e']*ne_x(x,t)
-            res_5 = -dVdx_x(x,t) -1e16* self.physics_param['qe']*self.physics_param['eps_0']**(-1) *(ni-ne)
+            res_5 = -dVdx_x(x,t) - 1e16* self.physics_param['qe']*self.physics_param['eps_0']**(-1) *(ni-ne)
             res_mat = np.concatenate([res_1,res_2,res_3,res_4,res_5],axis=0)
             return res_mat
         self.N = N
@@ -190,7 +191,7 @@ class elm():
             J_ = J(betaTs).reshape(self.output_dim*self.sample_size,
                                 self.output_dim*self.hidden_units)
             deltay_ = -N(betaTs).reshape(self.output_dim*self.sample_size,1)
-            delta_beta_ = np.linalg.solve(J_.T@J_+0.0*np.eye(self.hidden_units*self.output_dim),J_.T@deltay_)
+            delta_beta_ = np.linalg.solve(J_.T@J_+1e-10*np.eye(self.hidden_units*self.output_dim),J_.T@deltay_)
             betaTs = betaTs + delta_beta_.reshape(self.output_dim,self.hidden_units)
             betaTs_ = betaTs_ + delta_beta_
             train_score = np.mean(np.abs(self.N(betaTs)))
@@ -201,7 +202,7 @@ class elm():
             self.betaT['V'] = self.betaT['V'].reshape(1,-1)
             self.betaT['Gamma_i'] = self.betaT['Gamma_i'].reshape(1,-1)
             self.betaT['Gamma_e'] = self.betaT['Gamma_e'].reshape(1,-1)
-            if i%10 == 0:
+            if i%50 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
         print(time.time()-start,' seconds cost for nonlinear least square.')
@@ -225,12 +226,12 @@ class elm():
         NN_V = lambda x,t: self.betaT['V'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='V')
         NN_Gamma_i = lambda x,t: self.betaT['Gamma_i'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_i')
         NN_Gamma_e = lambda x,t: self.betaT['Gamma_e'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_e')
-        CE_ni = lambda x,t: 1e16*self.constrained_expression(NN_ni=NN_ni,token='ni')(x,t)
-        CE_ne = lambda x,t: 1e16*self.constrained_expression(NN_ne=NN_ne,token='ne')(x,t)
+        CE_ni = lambda x,t: self.constrained_expression(NN_ni=NN_ni,token='ni')(x,t)
+        CE_ne = lambda x,t: self.constrained_expression(NN_ne=NN_ne,token='ne')(x,t)
         CE_V = lambda x,t: self.constrained_expression(NN_V=NN_V,token='V')(x,t)
         CE_V_s = lambda x,t: self.constrained_expression(NN_V=NN_V,token='V')(x,t)
-        CE_Gamma_i = lambda x,t: 1e20*self.constrained_expression(NN_Gamma_i=NN_Gamma_i,CE_ni=CE_ni,CE_V=CE_V,token='Gamma_i')(x,t)
-        CE_Gamma_e = lambda x,t: 1e20*self.constrained_expression(NN_Gamma_e=NN_Gamma_e,CE_ni=CE_ni,CE_ne=CE_ne,CE_V=CE_V,CE_Gamma_i = CE_Gamma_i,token='Gamma_e')(x,t)
+        CE_Gamma_i = lambda x,t: self.constrained_expression(NN_Gamma_i=NN_Gamma_i,CE_ni=CE_ni,CE_V=CE_V,token='Gamma_i')(x,t)
+        CE_Gamma_e = lambda x,t: self.constrained_expression(NN_Gamma_e=NN_Gamma_e,CE_ni=CE_ni,CE_ne=CE_ne,CE_V=CE_V,CE_Gamma_i = CE_Gamma_i,token='Gamma_e')(x,t)
         return CE_ni,CE_ne,CE_V,CE_Gamma_i,CE_Gamma_e
 
     def constrained_expression(self,NN_ni=None,NN_ne=None,NN_V = None,NN_Gamma_i = None,NN_Gamma_e = None,
@@ -238,13 +239,13 @@ class elm():
                               ):
         if token == 'ni':
             def ni(x,t):
-                return 1 + (t-0.0)* NN_ni(x,t)
-                # return NN_ni(x,t)+1e16-NN_ni(x,np.zeros_like(t))
+                # return 1e16 + (t-0.0)* NN_ni(x,t)
+                return NN_ni(x,t)+1.0-NN_ni(x,np.zeros_like(t))
             return ni
         if token == 'ne':
             def ne(x,t):
-                return 1 + (t-0.0)* NN_ne(x,t)
-                # return NN_ne(x,t)+1e16-NN_ne(x,np.zeros_like(t))
+                # return 1e16 + (t-0.0)* NN_ne(x,t)
+                return NN_ne(x,t)+1.0-NN_ne(x,np.zeros_like(t))
 
             return ne
         if token == 'V':
@@ -254,7 +255,7 @@ class elm():
                 # return NN_V(x,t) - NN_V(np.zeros_like(x),t) - NN_V(x,np.zeros_like(t)) + NN_V(np.zeros_like(x),np.zeros_like(t)) + 5e4 * x -1e3
                 return NN_V(x,t) +(L-x)*L**(-1)*(NN_V(np.zeros_like(x),np.zeros_like(t))-NN_V(np.zeros_like(x),t))\
                     + x*L**(-1)*(NN_V(L*np.ones_like(x),np.zeros_like(t))-NN_V(L*np.ones_like(x),t))-NN_V(x,np.zeros_like(t))\
-                        +(5*1e4*x-1e3)*1e-20
+                        +(5*1e4*x-1e3)
             return V
         if token == 'Gamma_i':
             def Gamma_i(x,t):
@@ -267,7 +268,7 @@ class elm():
                 L = self.physics_param['L']
                 mu_i = self.physics_param['mu_i']
                 return NN_Gamma_i(x,t) \
-                    + (L-x)*L**(-1) * (1e-4*mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
+                    + (L-x)*L**(-1) * (-1e-4*mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
                     - NN_Gamma_i(np.zeros_like(x),t)) - (x*L**(-1)) * NN_Gamma_i(L*np.ones_like(x),t)
             return Gamma_i
         if token == 'Gamma_e':
@@ -280,8 +281,9 @@ class elm():
                     dVdx = dVdx_
                 L = self.physics_param['L']
                 mu_i = self.physics_param['mu_i']
+                mu_e = self.physics_param['mu_e']
                 # return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
-                #         + (x*L**(-1))*(1e-4*self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
-                return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
-                    - NN_Gamma_e(np.zeros_like(x),t)) + (x*L**(-1))*(1e-4*self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                        # + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (self.physics_param['gamma'] *mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                        + (x*L**(-1))*(1e-4*mu_e * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
             return Gamma_e
