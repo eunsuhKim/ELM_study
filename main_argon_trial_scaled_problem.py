@@ -128,13 +128,13 @@ model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      hidden_units=50, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,init_beta_scales=init_beta_scales,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save_txt:
-    sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
+    sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.txt",'w')
 
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
-
-model.fit(num_iter =100)
+num_iter = 50
+model.fit(num_iter =num_iter)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -149,7 +149,7 @@ plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
 if is_save_figure:
-    plt.savefig(f"figure/argon_scale_probres_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scale_probres_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -190,7 +190,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_scale_probprediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scale_probprediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -204,7 +204,7 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_scale_probprediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scale_probprediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -221,7 +221,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_scale_probprediction_snapshot_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scale_probprediction_snapshot_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -233,7 +233,7 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_scale_probprediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scale_probprediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
@@ -264,7 +264,7 @@ for i in range(2):
     plt.ylabel('x')
     plt.legend()
 if is_save_figure:
-    plt.savefig(f"figure/argon_scale_probcomparison_snapshot_ni_ne_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scale_probcomparison_snapshot_ni_ne_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -303,7 +303,7 @@ for i in range(2,5):
     plt.ylabel('x')
     plt.legend()
 if is_save_figure:
-    plt.savefig(f"figure/argon_scale_probcomparison_snapshot_E_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_scale_probcomparison_snapshot_E_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
@@ -325,7 +325,7 @@ for i in range(0,15,3):
 plt.show()
 
 if is_save_figure:
-    plt.savefig(f"figure/argon_result_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf")
+    plt.savefig(f"figure/argon_result_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf")
 else:
     plt.show()
 
