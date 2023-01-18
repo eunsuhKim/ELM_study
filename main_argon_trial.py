@@ -297,7 +297,7 @@ for i in range(2,5):
     plt.subplot(1,3,i-1)
     plt.title(titles[i])
     plt.plot(xs_test,U_pred[idx:idx+nx,i],label='pred')
-    plt.plot(xs_test,EGammieGammae[:,i],label='exact')
+    plt.plot(xs_test,EGammieGammae[:,i-2],label='exact')
     # plt.colorbar()
     plt.xlabel('t')
     plt.ylabel('x')
