@@ -67,16 +67,16 @@ class elm():
     def set_W_b(self):
         self.W = {}
         self.b = {}
-        self.W['ni'] = self.random_generating_func_W(self,size=(self.hidden_units,self.input_dim))
-        self.b['ni'] = self.random_generating_func_b(self,size=(self.hidden_units,1))
-        self.W['ne'] = self.random_generating_func_W(self,size=(self.hidden_units,self.input_dim))
-        self.b['ne'] = self.random_generating_func_b(self,size=(self.hidden_units,1))
-        self.W['V'] = self.random_generating_func_W(self,size=(self.hidden_units,self.input_dim))
-        self.b['V'] = self.random_generating_func_b(self,size=(self.hidden_units,1))
-        self.W['Gamma_i'] = self.random_generating_func_W(self,size=(self.hidden_units,self.input_dim))
-        self.b['Gamma_i'] = self.random_generating_func_b(self,size=(self.hidden_units,1))
-        self.W['Gamma_e'] = self.random_generating_func_W(self,size=(self.hidden_units,self.input_dim))
-        self.b['Gamma_e'] = self.random_generating_func_b(self,size=(self.hidden_units,1))
+        self.W['ni'] = self.random_generating_func_W(size=(self.hidden_units,self.input_dim))
+        self.b['ni'] = self.random_generating_func_b(size=(self.hidden_units,1))
+        self.W['ne'] = self.random_generating_func_W(size=(self.hidden_units,self.input_dim))
+        self.b['ne'] = self.random_generating_func_b(size=(self.hidden_units,1))
+        self.W['V'] = self.random_generating_func_W(size=(self.hidden_units,self.input_dim))
+        self.b['V'] = self.random_generating_func_b(size=(self.hidden_units,1))
+        self.W['Gamma_i'] = self.random_generating_func_W(size=(self.hidden_units,self.input_dim))
+        self.b['Gamma_i'] = self.random_generating_func_b(size=(self.hidden_units,1))
+        self.W['Gamma_e'] = self.random_generating_func_W(size=(self.hidden_units,self.input_dim))
+        self.b['Gamma_e'] = self.random_generating_func_b(size=(self.hidden_units,1))
         
     def set_act_func(self):
         if self.act_func_name == 'sigmoid':
@@ -167,12 +167,12 @@ class elm():
             # alpha_iz val and mu_i funciton were problematic.
             # Some vales of Gamma_e and Gamma_i are nan
             # ni_t,ne_t,V are zero
-            res_1 = 1e-4*ni_t(x,t) + Gamma_i_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
-            res_2 = 1e-4*ne_t(x,t) + Gamma_e_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
-            res_3 = 1e4*Gamma_i - self.physics_param['mu_i'](-dVdx(x,t))*(-dVdx(x,t)) + self.physics_param['D_i']*ni_x(x,t)
+            res_1 = ni_t(x,t) + Gamma_i_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
+            res_2 = ne_t(x,t) + Gamma_e_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
+            res_3 = Gamma_i - self.physics_param['mu_i'](-dVdx(x,t))*(-dVdx(x,t)) + self.physics_param['D_i']*ni_x(x,t)
             # res_4 and res__5 only not NAN1
-            res_4 = 1e4*Gamma_e + self.physics_param['mu_e']*(-dVdx(x,t))*ne + self.physics_param['D_e']*ne_x(x,t)
-            res_5 = -dVdx_x(x,t) - 1e16* self.physics_param['qe']*self.physics_param['eps_0']**(-1) *(ni-ne)
+            res_4 = Gamma_e + self.physics_param['mu_e']*(-dVdx(x,t))*ne + self.physics_param['D_e']*ne_x(x,t)
+            res_5 = -dVdx_x(x,t) - self.physics_param['qe']*self.physics_param['eps_0']**(-1) *(ni-ne)
             res_mat = np.concatenate([res_1,res_2,res_3,res_4,res_5],axis=0)
             return res_mat
         self.N = N
@@ -202,7 +202,7 @@ class elm():
             self.betaT['V'] = self.betaT['V'].reshape(1,-1)
             self.betaT['Gamma_i'] = self.betaT['Gamma_i'].reshape(1,-1)
             self.betaT['Gamma_e'] = self.betaT['Gamma_e'].reshape(1,-1)
-            if i%10 == 0:
+            if i%50 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
         print(time.time()-start,' seconds cost for nonlinear least square.')
@@ -240,12 +240,12 @@ class elm():
         if token == 'ni':
             def ni(x,t):
                 # return 1e16 + (t-0.0)* NN_ni(x,t)
-                return NN_ni(x,t)+1.0-NN_ni(x,np.zeros_like(t))
+                return NN_ni(x,t)+1e16-NN_ni(x,np.zeros_like(t))
             return ni
         if token == 'ne':
             def ne(x,t):
                 # return 1e16 + (t-0.0)* NN_ne(x,t)
-                return NN_ne(x,t)+1.0-NN_ne(x,np.zeros_like(t))
+                return NN_ne(x,t)+1e16-NN_ne(x,np.zeros_like(t))
 
             return ne
         if token == 'V':
@@ -268,7 +268,7 @@ class elm():
                 L = self.physics_param['L']
                 mu_i = self.physics_param['mu_i']
                 return NN_Gamma_i(x,t) \
-                    + (L-x)*L**(-1) * (-1e-4*mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
+                    + (L-x)*L**(-1) * (-mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
                     - NN_Gamma_i(np.zeros_like(x),t)) - (x*L**(-1)) * NN_Gamma_i(L*np.ones_like(x),t)
             return Gamma_i
         if token == 'Gamma_e':
@@ -281,9 +281,8 @@ class elm():
                     dVdx = dVdx_
                 L = self.physics_param['L']
                 mu_i = self.physics_param['mu_i']
-                mu_e = self.physics_param['mu_e']
                 # return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
                         # + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
                 return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (self.physics_param['gamma'] *mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
-                        + (x*L**(-1))*(1e-4*mu_e * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                        + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
             return Gamma_e
