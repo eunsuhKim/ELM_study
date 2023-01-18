@@ -31,7 +31,7 @@ plt.rcParams['lines.linewidth']=3
 #%%
 
 is_py = False
-is_save_figure = True
+is_save_figure = False
 is_save_txt = False
 #%%
 # Load test data
@@ -84,7 +84,7 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 act_func_name = 'tanh' #sigmoid,sin
 
 def random_generating_func_W(self,size):
-    # scale = np.sqrt(6/(self.input_dim+self.hidden_units))
+    scale = np.sqrt(6/(self.input_dim+self.hidden_units))
     scale = 1.0
     return onp.random.uniform(-scale,scale,size)
     # return 1*onp.random.randn(*size)
@@ -130,15 +130,17 @@ physics_param['alpha_iz']=alpha_iz
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
-                     hidden_units=20, physics_param=physics_param,random_seed=random_seed,
+                     hidden_units=50, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,init_beta_scales=init_beta_scales,random_initializing_func_betaT=random_initializing_func_betaT)
+num_iter = 100
+
 if is_save_txt:
     sys.stdout = open(f"logs/argon_[{tl}_{tr}_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.txt",'w')
 
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
-num_iter = 100
+
 model.fit(num_iter =num_iter)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
@@ -154,7 +156,7 @@ plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
 if is_save_figure:
-    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_probres_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -195,7 +197,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_probprediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -209,7 +211,7 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_probprediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -226,7 +228,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_probprediction_snapshot_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_snapshot_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -238,7 +240,7 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_probprediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
@@ -271,7 +273,7 @@ for i in range(2):
     plt.ylabel('x')
     plt.legend()
 if is_save_figure:
-    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_probcomparison_snapshot_ni_ne_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_comparison_snapshot_ni_ne_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -310,7 +312,7 @@ for i in range(2,5):
     plt.ylabel('x')
     plt.legend()
 if is_save_figure:
-    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_probcomparison_snapshot_E_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_comparison_snapshot_E_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
