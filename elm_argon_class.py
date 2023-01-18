@@ -190,7 +190,7 @@ class elm():
             J_ = J(betaTs).reshape(self.output_dim*self.sample_size,
                                 self.output_dim*self.hidden_units)
             deltay_ = -N(betaTs).reshape(self.output_dim*self.sample_size,1)
-            delta_beta_ = np.linalg.solve(J_.T@J_+1e-6*np.eye(self.hidden_units*self.output_dim),J_.T@deltay_)
+            delta_beta_ = np.linalg.solve(J_.T@J_+1e-10*np.eye(self.hidden_units*self.output_dim),J_.T@deltay_)
             betaTs = betaTs + delta_beta_.reshape(self.output_dim,self.hidden_units)
             betaTs_ = betaTs_ + delta_beta_
             train_score = np.mean(np.abs(self.N(betaTs)))
@@ -201,7 +201,7 @@ class elm():
             self.betaT['V'] = self.betaT['V'].reshape(1,-1)
             self.betaT['Gamma_i'] = self.betaT['Gamma_i'].reshape(1,-1)
             self.betaT['Gamma_e'] = self.betaT['Gamma_e'].reshape(1,-1)
-            if i%1 == 0:
+            if i%50 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
         print(time.time()-start,' seconds cost for nonlinear least square.')
@@ -279,6 +279,9 @@ class elm():
                     dVdx_ = vmap(dVdx,in_axes=1,out_axes=1)
                     dVdx = dVdx_
                 L = self.physics_param['L']
-                return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                mu_i = self.physics_param['mu_i']
+                # return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                        # + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (self.physics_param['gamma'] *mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
                         + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
             return Gamma_e

@@ -19,7 +19,7 @@ from jax import jacfwd, vmap, grad, jvp, vjp
 
 jax.config.update("jax_enable_x64", True)
 os.environ['CUDA_DEVICE_0_RDER'] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import scipy
 from scipy.special import roots_legendre, eval_legendre
@@ -58,7 +58,7 @@ random_seed = int(time.time())
 print('Colloc random seed:',random_seed)
 onp.random.seed(random_seed)
 
-N_colloc =100
+N_colloc =500
 
 #roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
 #ts_ = (roots+1)/2*(tr-tl)+tl
@@ -81,7 +81,7 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 # build model and train
 
 
-act_func_name = 'tanh' #sigmoid,sin
+act_func_name = 'sin' #sigmoid,sin
 
 def random_generating_func_W(size):
     return onp.random.uniform(-1,1,size)
@@ -90,7 +90,7 @@ def random_generating_func_b(size):
     return onp.random.uniform(-1,1,size)
     # return 1*onp.random.randn(*size)
 def random_initializing_func_betaT(size):
-    return onp.random.uniform(-1e15,1e15,size)
+    return onp.random.uniform(-1e10,1e10,size)
     # return 1e5*onp.random.randn(*size)
 p= 1.0
 physics_param = {}
@@ -118,7 +118,7 @@ physics_param['alpha_iz']=alpha_iz
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
-                     hidden_units=100, physics_param=physics_param,random_seed=random_seed,
+                     hidden_units=50, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save_txt:
     sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
@@ -127,7 +127,7 @@ if is_save_txt:
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =10)
+model.fit(num_iter =100)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -142,14 +142,14 @@ plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
 if is_save_figure:
-    plt.savefig(f"figure/argon_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/_argon_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
 
 #%%
 nx = 100
-nt = 40
+nt = 41
 xs_test = np.linspace(xl,xr,nx)
 ts_test = np.linspace(tl,tr,nt)
 Xs_test,Ts_test = np.meshgrid(xs_test,ts_test)
@@ -183,24 +183,52 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/_argon_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
 for i in range(3,5):
     plt.subplot(1,2,i-2)
     plt.title(titles[i])
+    
     plt.contourf(X_test[:,1].reshape(nt,nx),
     X_test[:,0].reshape(nt,nx),U_pred[:,i].reshape(nt,nx),100)
     plt.colorbar()
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/argon_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/_argon_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
 #%%
+t_val = 1e-9
+idx = int(nx*nt*t_val/tr)
+plt.figure(figsize=(30,6))
+titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
+for i in range(3):
+    plt.subplot(1,3,i+1)
+    plt.title(titles[i])
+    plt.plot(xs_test,U_pred[idx:idx+nx,i],100)
+    # plt.colorbar()/
+    plt.xlabel('t')
+    plt.ylabel('x')
+if is_save_figure:
+    plt.savefig(f"figure/_argon_prediction_snapshot_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+else:
+    plt.show()
+plt.figure(figsize=(20,8))
+for i in range(3,5):
+    plt.subplot(1,2,i-2)
+    plt.title(titles[i])
+    plt.plot(xs_test,U_pred[idx:idx+nx,i],100)
+    # plt.colorbar()
+    plt.xlabel('t')
+    plt.ylabel('x')
+if is_save_figure:
+    plt.savefig(f"figure/_argon_prediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+else:
+    plt.show()
 #%%
 #%%
 plt.figure(figsize=(8,10))
@@ -220,7 +248,7 @@ for i in range(0,15,3):
     
 plt.show()
 
-if is_save:
+if is_save_figure:
     plt.savefig(f"figure/argon_result_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf")
 else:
     plt.show()

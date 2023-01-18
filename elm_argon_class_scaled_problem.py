@@ -267,7 +267,7 @@ class elm():
                 L = self.physics_param['L']
                 mu_i = self.physics_param['mu_i']
                 return NN_Gamma_i(x,t) \
-                    + (L-x)*L**(-1) * (-1e-4*mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
+                    + (L-x)*L**(-1) * (1e-4*mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
                     - NN_Gamma_i(np.zeros_like(x),t)) - (x*L**(-1)) * NN_Gamma_i(L*np.ones_like(x),t)
             return Gamma_i
         if token == 'Gamma_e':
