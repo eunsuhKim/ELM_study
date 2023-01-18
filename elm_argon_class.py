@@ -24,13 +24,13 @@ class elm():
     def __init__(self,X=None,random_generating_func_W=None,
                      random_generating_func_b=None,act_func_name='sin',
                      hidden_units=32, physics_param=None,random_seed=None,
-                     quadrature=True,random_initializing_func_betaT=None):
+                     quadrature=True,init_beta_scales=None,random_initializing_func_betaT=None):
         # save and print options
         option_dict = {}
         option_dict['random_generating_func_W'] = random_generating_func_W
         option_dict['random_generating_func_b'] = random_generating_func_b
         option_dict['random_initializing_func_betaT'] = random_initializing_func_betaT
-
+        option_dict['init_beta_scales']=init_beta_scales
         option_dict['act_func_name'] = act_func_name
         option_dict['hidden_units'] = hidden_units
         option_dict['physics_param']=physics_param
@@ -45,6 +45,7 @@ class elm():
         self.random_generating_func_W = random_generating_func_W
         self.random_generating_func_b = random_generating_func_b
         self.random_initializing_func_betaT = random_initializing_func_betaT
+        self.init_beta_scales = init_beta_scales
         self.act_func_name = act_func_name
         self.hidden_units = hidden_units
         self.input_dim = X.shape[0]
@@ -96,11 +97,11 @@ class elm():
         # self.betaT['V'] = np.array(onp.random.randn(1,self.hidden_units))
         # self.betaT['Gamma_i'] = np.array(onp.random.randn(1,self.hidden_units))
         # self.betaT['Gamma_e'] = np.array(onp.random.randn(1,self.hidden_units))
-        self.betaT['ni'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['ne'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['V'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['Gamma_i'] = self.random_initializing_func_betaT((1,self.hidden_units))
-        self.betaT['Gamma_e'] = self.random_initializing_func_betaT((1,self.hidden_units))
+        self.betaT['ni'] = self.random_initializing_func_betaT(self,'ni',(1,self.hidden_units))
+        self.betaT['ne'] = self.random_initializing_func_betaT(self,'ne',(1,self.hidden_units))
+        self.betaT['V'] = self.random_initializing_func_betaT(self,'V',(1,self.hidden_units))
+        self.betaT['Gamma_i'] = self.random_initializing_func_betaT(self,'Gamma_i',(1,self.hidden_units))
+        self.betaT['Gamma_e'] = self.random_initializing_func_betaT(self,'Gamma_e',(1,self.hidden_units))
         
     def make_beta(self,num_iter = 10):
         x, t = self.X

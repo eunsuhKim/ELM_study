@@ -89,9 +89,16 @@ def random_generating_func_W(size):
 def random_generating_func_b(size):
     return onp.random.uniform(-1,1,size)
     # return 1*onp.random.randn(*size)
-def random_initializing_func_betaT(size):
-    return onp.random.uniform(-1e10,1e10,size)
+def random_initializing_func_betaT(self,token,size):
+    scale=self.init_beta_scales[token]
+    return onp.random.uniform(-scale,scale,size)
     # return 1e5*onp.random.randn(*size)
+init_beta_scales={}#[1e16,1e16,1e5,1e20,1e22]
+init_beta_scales['ni']=1e16
+init_beta_scales['ne']=1e16
+init_beta_scales['V']=1e3
+init_beta_scales['Gamma_i']=1e20
+init_beta_scales['Gamma_e']=1e22
 p= 1.0
 physics_param = {}
 physics_param['L'] = L
@@ -119,7 +126,7 @@ physics_param['alpha_iz']=alpha_iz
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
                      hidden_units=50, physics_param=physics_param,random_seed=random_seed,
-                     quadrature=False,random_initializing_func_betaT=random_initializing_func_betaT)
+                     quadrature=False,init_beta_scales=init_beta_scales,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save_txt:
     sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
 
@@ -148,7 +155,7 @@ else:
 
 
 #%%
-nx = 100
+nx = 200
 nt = 41
 xs_test = np.linspace(xl,xr,nx)
 ts_test = np.linspace(tl,tr,nt)
@@ -209,7 +216,7 @@ titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(3):
     plt.subplot(1,3,i+1)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[idx:idx+nx,i],100)
+    plt.plot(xs_test,U_pred[idx:idx+nx,i])
     # plt.colorbar()/
     plt.xlabel('t')
     plt.ylabel('x')
@@ -221,7 +228,7 @@ plt.figure(figsize=(20,8))
 for i in range(3,5):
     plt.subplot(1,2,i-2)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[idx:idx+nx,i],100)
+    plt.plot(xs_test,U_pred[idx:idx+nx,i])
     # plt.colorbar()
     plt.xlabel('t')
     plt.ylabel('x')
@@ -230,6 +237,75 @@ if is_save_figure:
 else:
     plt.show()
 #%%
+import pickle5 as pickle
+import pandas as pd
+data = pd.read_pickle('dataset/t=1e-09.pkl')
+#%%
+ni_test= data['ni'].reshape(-1,1)
+ne_test= data['ne'].reshape(-1,1)
+E_test= data['E'].reshape(-1,1)
+Gamma_i_test= data['Gamma_i'].reshape(-1,1)
+Gamma_e_test= data['Gamma_e'].reshape(-1,1)
+
+nine = np.concatenate([ni_test,ne_test],axis=1)
+EGammieGammae = np.concatenate([E_test,Gamma_i_test,Gamma_e_test],axis=1)
+#%%
+t_val = 1e-9
+idx = int(nx*nt*t_val/tr)
+plt.figure(figsize=(20,8))
+titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
+for i in range(2):
+    plt.subplot(1,2,i+1)
+    plt.title(titles[i])
+    plt.plot(xs_test,U_pred[idx:idx+nx,i],label='pred')
+    plt.plot(xs_test,nine[:,i],label='exact')
+    # plt.colorbar()/
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.legend()
+if is_save_figure:
+    plt.savefig(f"figure/_argon_comparison_snapshot_ni_ne_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+else:
+    plt.show()
+
+#%%
+nx = 201
+nt = 41
+xs_test = np.linspace(xl,xr,nx)
+ts_test = np.linspace(tl,tr,nt)
+Xs_test,Ts_test = np.meshgrid(xs_test,ts_test)
+X_test = np.concatenate([Xs_test.flatten().reshape(-1,1),Ts_test.flatten().reshape(-1,1)],axis=1)
+# The following prediciton functions have arguments x, t.
+ni, ne,V,Gamma_i,Gamma_e = model.prediction_functions()
+def V_s(x,t):
+    return V(x,t)[0,0]
+E_s = grad(V_s,argnums=0)
+E = vmap(E_s,in_axes=1,out_axes=1)
+
+ni_pred = ni(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
+ne_pred = ne(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
+V_pred = V(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
+E_pred = E(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
+Gamma_i_pred = Gamma_i(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
+Gamma_e_pred = Gamma_e(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
+
+U_pred = np.concatenate([ni_pred,ne_pred,E_pred,Gamma_i_pred,Gamma_e_pred],axis=0).T
+
+#%%
+plt.figure(figsize=(30,6))
+for i in range(2,5):
+    plt.subplot(1,3,i-1)
+    plt.title(titles[i])
+    plt.plot(xs_test,U_pred[idx:idx+nx,i],label='pred')
+    plt.plot(xs_test,EGammieGammae[:,i],label='exact')
+    # plt.colorbar()
+    plt.xlabel('t')
+    plt.ylabel('x')
+    plt.legend()
+if is_save_figure:
+    plt.savefig(f"figure/_argon_comparison_snapshot_E_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+else:
+    plt.show()
 #%%
 plt.figure(figsize=(8,10))
 
