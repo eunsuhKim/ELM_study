@@ -19,7 +19,7 @@ from jax import jacfwd, vmap, grad, jvp, vjp
 
 jax.config.update("jax_enable_x64", True)
 os.environ['CUDA_DEVICE_0_RDER'] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import scipy
 from scipy.special import roots_legendre, eval_legendre
@@ -58,22 +58,22 @@ random_seed = int(time.time())
 print('Colloc random seed:',random_seed)
 onp.random.seed(random_seed)
 
-N_colloc =1000
+N_colloc =10
 
 #roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
 #ts_ = (roots+1)/2*(tr-tl)+tl
 xl= 0.0
 xr= 2e-2
 tl = 0.0
-tr =  1e-8#4e-4
+tr =  4e-4
 L = xr-xl
 xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
 # xs = L*onp.ones(N_colloc)
 # xs = onp.linspace(xl, xr, N_colloc)
-# ts = onp.random.uniform(tl,tr,N_colloc)
+ts = onp.random.uniform(tl,tr,N_colloc)
 # ts = onp.linspace(tl,tr,N_colloc)
-ts = onp.zeros(N_colloc)
+# ts = onp.zeros(N_colloc)
 # Xs, Ts = onp.meshgrid(xs,ts)
 X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 
@@ -81,7 +81,7 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 # build model and train
 
 
-act_func_name = 'tanh' #sigmoid,sin
+act_func_name = 'sin' #sigmoid,sin
 
 def random_generating_func_W(self,size):
     scale = np.sqrt(6/(self.input_dim+self.hidden_units))
@@ -127,6 +127,7 @@ def alpha_iz(self,E):
 physics_param['mu_i']=mu_i
 physics_param['alpha_iz']=alpha_iz
 
+#%%
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
@@ -136,7 +137,22 @@ num_iter = 100
 
 if is_save_txt:
     sys.stdout = open(f"logs/argon_[{tl}_{tr}_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.txt",'w')
-
+#%%
+es = np.logspace(np.log10(350),np.log10(1580),1001)
+plt.plot(es,alpha_iz(model,-es),label='alpha_iz')
+# plt.plot(es,mu_i(-es),label='mu_i')
+plt.yscale('log')
+# plt.xlim([300,400])
+plt.legend()
+plt.show()
+#%%
+es = np.logspace(-5,5,1001)
+# plt.plot(es,alpha_iz(model,-es),label='alpha_iz')
+plt.plot(es,mu_i(-es),label='mu_i')
+# plt.yscale('log')
+# plt.xlim([300,400])
+plt.legend()
+plt.show()
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)

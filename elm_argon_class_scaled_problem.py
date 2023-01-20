@@ -202,7 +202,7 @@ class elm():
             self.betaT['V'] = self.betaT['V'].reshape(1,-1)
             self.betaT['Gamma_i'] = self.betaT['Gamma_i'].reshape(1,-1)
             self.betaT['Gamma_e'] = self.betaT['Gamma_e'].reshape(1,-1)
-            if i%10 == 0:
+            if i%1 == 0:
                 print(f'Train_score when iter={i}: {train_score}')
         
         print(time.time()-start,' seconds cost for nonlinear least square.')
