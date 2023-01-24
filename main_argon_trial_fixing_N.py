@@ -1,5 +1,5 @@
 #%%
-from elm_argon_class import elm
+from elm_argon_class_fixing_N import elm
 import numpy as onp
 import time
 import jax.numpy as np
@@ -19,7 +19,7 @@ from jax import jacfwd, vmap, grad, jvp, vjp
 
 jax.config.update("jax_enable_x64", True)
 os.environ['CUDA_DEVICE_0_RDER'] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import scipy
 from scipy.special import roots_legendre, eval_legendre
@@ -58,7 +58,7 @@ random_seed = int(time.time())
 print('Colloc random seed:',random_seed)
 onp.random.seed(random_seed)
 
-N_colloc =50
+N_colloc =20
 
 #roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
 #ts_ = (roots+1)/2*(tr-tl)+tl
@@ -81,24 +81,24 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 # build model and train
 
 
-act_func_name = 'sin' #sigmoid,sin
+act_func_name = 'tanh' #sigmoid,sin
 
 def random_generating_func_W(size):
-    # return onp.random.uniform(-1,1,size)
-    return 1*onp.random.randn(*size)
+    return onp.random.uniform(-1,1,size)
+    # return 1*onp.random.randn(*size)
 def random_generating_func_b(size):
-    # return onp.random.uniform(-1,1,size)
-    return 1*onp.random.randn(*size)
+    return onp.random.uniform(-1,1,size)
+    # return 1*onp.random.randn(*size)
 def random_initializing_func_betaT(self,token,size):
     scale=self.init_beta_scales[token]
-    # return onp.random.uniform(-scale,scale,size)
-    return scale*onp.random.randn(*size)
+    return onp.random.uniform(-scale,scale,size)
+    # return 1e5*onp.random.randn(*size)
 init_beta_scales={}#[1e16,1e16,1e5,1e20,1e22]
-init_beta_scales['ni']=1.0#1e4
-init_beta_scales['ne']=1.0#1e4
-init_beta_scales['V']=1.0#1e1
-init_beta_scales['Gamma_i']=1.0#1e5
-init_beta_scales['Gamma_e']=1.0#1e5
+init_beta_scales['ni']=1e4#1.0#1e4
+init_beta_scales['ne']=1e4#1.0#1e4
+init_beta_scales['V']=1e1#1.0#1e1
+init_beta_scales['Gamma_i']=1e5#1.0#1e5
+init_beta_scales['Gamma_e']=1e5#1.0#1e5
 p= 1.0
 physics_param = {}
 physics_param['L'] = L
@@ -111,12 +111,12 @@ physics_param['qe'] = scipy.constants.elementary_charge # elementary charge
 physics_param['p'] = p
 
 def mu_i(E):
-    return (0.5740)*(1+0.66*np.sqrt(np.abs(E)*1e-2))**(-1)
+    return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
     # return (0.5740)/(1+0.66*np.sqrt(np.sqrt(np.square(E)*1e-2)))
 def alpha_iz(self,E):
     qe = self.physics_param['qe']
     p = self.physics_param['p']
-    return 2922*p*np.exp(-26.62*np.sqrt(p*np.abs(1e-2*E)**(-1)))
+    return 2922*p*qe**(-26.62*np.sqrt(p/np.abs(1e-2*E)))
     # return 2922*p*qe**(-26.62*np.sqrt(p/np.sqrt(np.square(1e-2*E))))
 
 physics_param['mu_i']=mu_i
@@ -125,7 +125,7 @@ physics_param['alpha_iz']=alpha_iz
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
-                     hidden_units=10, physics_param=physics_param,random_seed=random_seed,
+                     hidden_units=15, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,init_beta_scales=init_beta_scales,random_initializing_func_betaT=random_initializing_func_betaT)
 if is_save_txt:
     sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
@@ -134,7 +134,7 @@ if is_save_txt:
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =10)
+model.fit(num_iter =20)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -216,7 +216,7 @@ titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(3):
     plt.subplot(1,3,i+1)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[:,i].reshape(nt,nx)[idx,:])
+    plt.plot(xs_test,U_pred[idx:idx+nx,i])
     # plt.colorbar()/
     plt.xlabel('t')
     plt.ylabel('x')
@@ -228,7 +228,7 @@ plt.figure(figsize=(20,8))
 for i in range(3,5):
     plt.subplot(1,2,i-2)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[:,i].reshape(nt,nx)[idx,:])
+    plt.plot(xs_test,U_pred[idx:idx+nx,i])
     # plt.colorbar()
     plt.xlabel('t')
     plt.ylabel('x')
@@ -250,6 +250,7 @@ Gamma_e_test= data['Gamma_e'].reshape(-1,1)
 nine = np.concatenate([ni_test,ne_test],axis=1)
 EGammieGammae = np.concatenate([E_test,Gamma_i_test,Gamma_e_test],axis=1)
 
+
 #%%
 t_val = 1e-9
 idx = int(nx*nt*t_val/tr)
@@ -258,7 +259,7 @@ titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(2):
     plt.subplot(1,2,i+1)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[:,i].reshape(nt,nx)[idx,:],label='pred')
+    plt.plot(xs_test,U_pred[idx:idx+nx,i],label='pred')
     plt.plot(xs_test,nine[:,i],label='exact')
     # plt.colorbar()/
     plt.xlabel('t')
@@ -297,7 +298,7 @@ plt.figure(figsize=(30,6))
 for i in range(2,5):
     plt.subplot(1,3,i-1)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[:,i].reshape(nt,nx)[idx,:],label='pred')
+    plt.plot(xs_test,U_pred[idx:idx+nx,i],label='pred')
     plt.plot(xs_test,EGammieGammae[:,i-2],label='exact')
     # plt.colorbar()
     plt.xlabel('t')

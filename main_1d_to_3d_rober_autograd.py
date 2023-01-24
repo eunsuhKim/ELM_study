@@ -19,8 +19,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from scipy.special import roots_legendre, eval_legendre
 import argparse
 #%%
-is_py = True
-is_save = True
+is_py = False
+is_save = False
 
 
 

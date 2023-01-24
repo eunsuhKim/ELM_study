@@ -113,13 +113,81 @@ class elm():
 #             weights = np.ones((1,self.sample_size))
         def N(betaTs):
             beta_ni, beta_ne, beta_V, beta_Gamma_i, beta_Gamma_e = betaTs
-            self.betaT['ni'] = beta_ni.reshape(1,-1)
-            self.betaT['ne'] = beta_ne.reshape(1,-1)
-            self.betaT['V'] = beta_V.reshape(1,-1)
-            self.betaT['Gamma_i'] = beta_Gamma_i.reshape(1,-1)
-            self.betaT['Gamma_e'] = beta_Gamma_e.reshape(1,-1)
-            # CE_ni_s,CE_ne_s,CE_V_s,CE_Gamma_i_s,CE_Gamma_e_s = self.prediction_functions_scalar()
-            CE_ni,CE_ne,CE_V,CE_Gamma_i,CE_Gamma_e = self.prediction_functions()
+            # betaT = {}
+            betaT_ni = betaTs[0:1,:].reshape(1,-1)
+            betaT_ne = betaTs[1:2,:].reshape(1,-1)
+            betaT_V = betaTs[2:3,:].reshape(1,-1)
+            betaT_Gamma_i = betaTs[3:4,:].reshape(1,-1)
+            betaT_Gamma_e = betaTs[4:5].reshape(1,-1)
+
+            # make predicting functions
+            # CE_ni,CE_ne,CE_V,CE_Gamma_i,CE_Gamma_e = self.prediction_functions()
+            NN_ni = lambda x,t: betaT_ni @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='ni')
+            NN_ne = lambda x,t: betaT_ne @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='ne')
+            NN_V = lambda x,t: betaT_V @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='V')
+            NN_Gamma_i = lambda x,t: betaT_Gamma_i @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_i')
+            NN_Gamma_e = lambda x,t: betaT_Gamma_e @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='Gamma_e')
+
+            
+            def CE_ni(x,t):
+                # return 1e16 + (t-0.0)* NN_ni(x,t)
+                return NN_ni(x,t)+1e16-NN_ni(x,np.zeros_like(t))
+
+        
+            def CE_ne(x,t):
+                # return 1e16 + (t-0.0)* NN_ne(x,t)
+                return NN_ne(x,t)+1e16-NN_ne(x,np.zeros_like(t))
+
+ 
+        
+            def CE_V(x,t):
+
+                L = self.physics_param['L']
+                # return NN_V(x,t) - NN_V(np.zeros_like(x),t) - NN_V(x,np.zeros_like(t)) + NN_V(np.zeros_like(x),np.zeros_like(t)) + 5e4 * x -1e3
+                return NN_V(x,t) +(L-x)/L*(NN_V(np.zeros_like(x),np.zeros_like(t))-NN_V(np.zeros_like(x),t))\
+                    + x/L*(NN_V(L*np.ones_like(x),np.zeros_like(t))-NN_V(L*np.ones_like(x),t))-NN_V(x,np.zeros_like(t))\
+                        +(5*1e4*x-1e3)
+
+        
+            def CE_Gamma_i(x,t):
+                def CE_V_s(X,T):
+                    return CE_V(X,T)[0,0]
+                dVdx = grad(CE_V_s,argnums=0)
+                if len(x.shape) == 2:
+                    dVdx_ = vmap(dVdx,in_axes=1,out_axes=1)
+                    dVdx = dVdx_
+                L = self.physics_param['L']
+                mu_i = self.physics_param['mu_i']
+                return NN_Gamma_i(x,t) \
+                    + (L-x)/L * (-mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t)\
+                    - NN_Gamma_i(np.zeros_like(x),t)) - (x/L) * NN_Gamma_i(L*np.ones_like(x),t)
+
+        
+            def CE_Gamma_e(x,t):
+                def CE_V_s(X,T):
+                    return CE_V(X,T)[0,0]
+                dVdx = grad(CE_V_s,argnums=0)
+                if len(x.shape) == 2:
+                    dVdx_ = vmap(dVdx,in_axes=1,out_axes=1)
+                    dVdx = dVdx_
+                L = self.physics_param['L']
+                mu_i = self.physics_param['mu_i']
+                mu_e = self.physics_param['mu_e']
+                gamma = self.physics_param['gamma']
+                # return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                        # + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                # return NN_Gamma_e(x,t) + (L-x)/L * (gamma *mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                #         + (x/L)*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                return NN_Gamma_e(x,t) + (L-x)/L * (-gamma *CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                        + (x/L)*(mu_e * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+
+            # CE_ni = lambda x,t: self.constrained_expression(NN_ni=NN_ni,token='ni')(x,t)
+            # CE_ne = lambda x,t: self.constrained_expression(NN_ne=NN_ne,token='ne')(x,t)
+            # CE_V = lambda x,t: self.constrained_expression(NN_V=NN_V,token='V')(x,t)
+            # CE_V_s = lambda x,t: self.constrained_expression(NN_V=NN_V,token='V')(x,t)
+            # CE_Gamma_i = lambda x,t: self.constrained_expression(NN_Gamma_i=NN_Gamma_i,CE_ni=CE_ni,CE_V=CE_V,token='Gamma_i')(x,t)
+            # CE_Gamma_e = lambda x,t: self.constrained_expression(NN_Gamma_e=NN_Gamma_e,CE_ni=CE_ni,CE_ne=CE_ne,CE_V=CE_V,CE_Gamma_i = CE_Gamma_i,token='Gamma_e')(x,t)
+            
             def CE_ni_s(X,T):
                 return CE_ni(X,T)[0,0]
             def CE_ne_s(X,T):
@@ -167,12 +235,19 @@ class elm():
             # alpha_iz val and mu_i funciton were problematic.
             # Some vales of Gamma_e and Gamma_i are nan
             # ni_t,ne_t,V are zero
-            res_1 = ni_t(x,t) + Gamma_i_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
-            res_2 = ne_t(x,t) + Gamma_e_x(x,t) - self.physics_param['alpha_iz'](self,-dVdx(x,t))*Gamma_e
-            res_3 = Gamma_i - self.physics_param['mu_i'](-dVdx(x,t))*(-dVdx(x,t))*ni + self.physics_param['D_i']*ni_x(x,t)
+            alpha_iz =  self.physics_param['alpha_iz']
+            mu_i = self.physics_param['mu_i']
+            mu_e = self.physics_param['mu_e']
+            D_e =  self.physics_param['D_e']
+            qe = self.physics_param['qe']
+            D_i =  self.physics_param['D_i']
+            eps_0 = self.physics_param['eps_0']
+            res_1 = ni_t(x,t) + Gamma_i_x(x,t) -alpha_iz(self,-dVdx(x,t))*Gamma_e
+            res_2 = ne_t(x,t) + Gamma_e_x(x,t) - alpha_iz(self,-dVdx(x,t))*Gamma_e
+            res_3 = Gamma_i + mu_i(-dVdx(x,t))*dVdx(x,t)*ni +D_i*ni_x(x,t)
             # res_4 and res__5 only not NAN1
-            res_4 = Gamma_e + self.physics_param['mu_e']*(-dVdx(x,t))*ne + self.physics_param['D_e']*ne_x(x,t)
-            res_5 = -dVdx_x(x,t) - self.physics_param['qe']*self.physics_param['eps_0']**(-1) *(ni-ne)
+            res_4 = Gamma_e - mu_e*dVdx(x,t)*ne +D_e*ne_x(x,t)
+            res_5 = -dVdx_x(x,t) - qe/eps_0 *(ni-ne)
             res_mat = np.concatenate([res_1,res_2,res_3,res_4,res_5],axis=0)
             return res_mat
         self.N = N
@@ -194,7 +269,7 @@ class elm():
             deltay_ = N(betaTs).reshape(self.output_dim*self.sample_size,1)
             LHS_mat = J_.T@J_+0.0*np.eye(self.hidden_units*self.output_dim)
             RHS_vec = J_.T@deltay_
-            delta_beta_ = np.linalg.solve(LHS_mat,RHS_vec)
+            delta_beta_ = np.linalg.solve(1e-30*LHS_mat,1e-30*RHS_vec)
             betaTs = betaTs - delta_beta_.reshape(self.output_dim,self.hidden_units)
             betaTs_ = betaTs_ - delta_beta_
             train_score = np.mean(np.abs(self.N(betaTs)))
@@ -236,6 +311,7 @@ class elm():
         CE_Gamma_i = lambda x,t: self.constrained_expression(NN_Gamma_i=NN_Gamma_i,CE_ni=CE_ni,CE_V=CE_V,token='Gamma_i')(x,t)
         CE_Gamma_e = lambda x,t: self.constrained_expression(NN_Gamma_e=NN_Gamma_e,CE_ni=CE_ni,CE_ne=CE_ne,CE_V=CE_V,CE_Gamma_i = CE_Gamma_i,token='Gamma_e')(x,t)
         return CE_ni,CE_ne,CE_V,CE_Gamma_i,CE_Gamma_e
+        
 
     def constrained_expression(self,NN_ni=None,NN_ne=None,NN_V = None,NN_Gamma_i = None,NN_Gamma_e = None,
                                CE_ni=None,CE_ne=None,CE_V = None,CE_Gamma_i = None,CE_Gamma_e = None,token=None,
@@ -284,8 +360,13 @@ class elm():
                     dVdx = dVdx_
                 L = self.physics_param['L']
                 mu_i = self.physics_param['mu_i']
+                mu_e = self.physics_param['mu_e']
+                gamma = self.physics_param['gamma']
                 # return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (-self.physics_param['gamma'] * CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
                         # + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
-                return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (self.physics_param['gamma'] *mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
-                        + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                # return NN_Gamma_e(x,t) + (L-x)*L**(-1) * (self.physics_param['gamma'] *mu_i(-dVdx(np.zeros_like(x),t))*CE_ni(np.zeros_like(x),t)*dVdx(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                #         + (x*L**(-1))*(self.physics_param['mu_e'] * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+                return NN_Gamma_e(x,t) + (L-x)/L * (-gamma *CE_Gamma_i(np.zeros_like(x),t) - NN_Gamma_e(np.zeros_like(x),t)) \
+                        + (x/L)*(mu_e * CE_ne(L*np.ones_like(x),t) * dVdx(L*np.ones_like(x),t)-NN_Gamma_e(L*np.ones_like(x),t))
+
             return Gamma_e

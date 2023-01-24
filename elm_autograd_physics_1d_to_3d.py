@@ -197,12 +197,15 @@ class elm():
             if self.de_name == 'rober':
                 k1, k2, k3 = self.physics_param
                 # Nonlinear w.r.t. beta
-                def wrapper_func_0(T):
-                    return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[0,0]
-                def wrapper_func_1(T):
-                    return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[1,0]
-                def wrapper_func_2(T):
-                    return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[2,0]
+                # def wrapper_func_0(T):
+                #     return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[0,0]
+                # def wrapper_func_1(T):
+                #     return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[1,0]
+                # def wrapper_func_2(T):
+                #     return (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[2,0]
+                wrapper_func_0= lambda T: (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[0,0]
+                wrapper_func_1=lambda T: (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[1,0]
+                wrapper_func_2=lambda T: (self.initial_val+(T-self.x[0])*(betaT@(self.__sigma(X = T))))[2,0]
                 u = self.initial_val+(T-self.x[0])*(betaT @ self.__sigma(X = T))
                 x = u[0:1,:]
                 y = u[1:2,:]

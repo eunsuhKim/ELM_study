@@ -1,5 +1,5 @@
 #%%
-from elm_argon_class import elm
+from elm_argon_class_scaled_problem_fixing_N import elm
 import numpy as onp
 import time
 import jax.numpy as np
@@ -20,7 +20,7 @@ from jax import jacfwd, vmap, grad, jvp, vjp
 jax.config.update("jax_enable_x64", True)
 os.environ['CUDA_DEVICE_0_RDER'] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
+ 
 import scipy
 from scipy.special import roots_legendre, eval_legendre
 import argparse
@@ -58,14 +58,14 @@ random_seed = int(time.time())
 print('Colloc random seed:',random_seed)
 onp.random.seed(random_seed)
 
-N_colloc =50
+N_colloc =100
 
 #roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
 #ts_ = (roots+1)/2*(tr-tl)+tl
 xl= 0.0
 xr= 2e-2
 tl = 0.0
-tr =  2e-9#4e-4
+tr =  1.5*1e-9#4e-4
 L = xr-xl
 xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
@@ -81,24 +81,29 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 # build model and train
 
 
-act_func_name = 'sin' #sigmoid,sin
+act_func_name = 'gauss' #sigmoid,sin
 
-def random_generating_func_W(size):
-    # return onp.random.uniform(-1,1,size)
-    return 1*onp.random.randn(*size)
-def random_generating_func_b(size):
-    # return onp.random.uniform(-1,1,size)
-    return 1*onp.random.randn(*size)
+def random_generating_func_W(self,size):
+    # scale = np.sqrt(6/(self.input_dim+self.hidden_units))
+    scale = 1.0
+    # return onp.random.uniform(-scale,scale,size)
+    return scale*onp.random.randn(*size)
+def random_generating_func_b(self,size):
+    # scale = np.sqrt(6/(self.input_dim+self.hidden_units))
+    scale = 1.0
+    # return onp.random.uniform(-scale,scale,size)
+    return scale*onp.random.randn(*size)
 def random_initializing_func_betaT(self,token,size):
     scale=self.init_beta_scales[token]
+    # scale=np.sqrt(6/(self.output_dim+self.hidden_units))
     # return onp.random.uniform(-scale,scale,size)
     return scale*onp.random.randn(*size)
 init_beta_scales={}#[1e16,1e16,1e5,1e20,1e22]
-init_beta_scales['ni']=1.0#1e4
-init_beta_scales['ne']=1.0#1e4
-init_beta_scales['V']=1.0#1e1
-init_beta_scales['Gamma_i']=1.0#1e5
-init_beta_scales['Gamma_e']=1.0#1e5
+init_beta_scales['ni']=1.0#e16
+init_beta_scales['ne']=1.0#e16
+init_beta_scales['V']=1e3#1.0#e3
+init_beta_scales['Gamma_i']=1.0#e20
+init_beta_scales['Gamma_e']=1.0#e22
 p= 1.0
 physics_param = {}
 physics_param['L'] = L
@@ -111,36 +116,56 @@ physics_param['qe'] = scipy.constants.elementary_charge # elementary charge
 physics_param['p'] = p
 
 def mu_i(E):
-    return (0.5740)*(1+0.66*np.sqrt(np.abs(E)*1e-2))**(-1)
+    return (0.5740)/(1+0.66*np.sqrt(np.abs(E)*1e-2))
     # return (0.5740)/(1+0.66*np.sqrt(np.sqrt(np.square(E)*1e-2)))
 def alpha_iz(self,E):
     qe = self.physics_param['qe']
     p = self.physics_param['p']
-    return 2922*p*np.exp(-26.62*np.sqrt(p*np.abs(1e-2*E)**(-1)))
-    # return 2922*p*qe**(-26.62*np.sqrt(p/np.sqrt(np.square(1e-2*E))))
+    return 2922*p*np.exp(-26.62*np.sqrt(p/np.abs(1e-2*E)))
+    # return 2922*p*np.exp(-26.62*np.sqrt(p/np.sqrt(np.square(1e-2*E))))
 
 physics_param['mu_i']=mu_i
 physics_param['alpha_iz']=alpha_iz
 
+#%%
 
 model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
                      hidden_units=10, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,init_beta_scales=init_beta_scales,random_initializing_func_betaT=random_initializing_func_betaT)
-if is_save_txt:
-    sys.stdout = open(f"logs/argon_act_func_{model.act_func_name}_N_colloc_{N_colloc}.txt",'w')
+num_iter = 30
 
+if is_save_txt:
+    sys.stdout = open(f"logs/argon_[{tl}_{tr}_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.txt",'w')
+#%%
+# es = np.logspace(np.log10(350),np.log10(1580),1001)
+# plt.plot(es,alpha_iz(model,-es),label='alpha_iz')
+# # plt.plot(es,mu_i(-es),label='mu_i')
+# plt.yscale('log')
+# # plt.xlim([300,400])
+# plt.legend()
+# plt.show()
+
+
+#%%
+# es = np.logspace(-5,5,1001)
+# # plt.plot(es,alpha_iz(model,-es),label='alpha_iz')
+# plt.plot(es,mu_i(-es),label='mu_i')
+# # plt.yscale('log')
+# # plt.xlim([300,400])
+# plt.legend()
+# plt.show()
 #%%
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =10)
+model.fit(num_iter =num_iter)
 #%%
-print("learned beta:\n", model.betaT['ne'].sum())
-print("learned beta:\n", model.betaT['ni'].sum())
-print("learned beta:\n", model.betaT['V'].sum())
-print("learned beta:\n", model.betaT['Gamma_i'].sum())
-print("learned beta:\n", model.betaT['Gamma_e'].sum())
+print("learned beta_ne:\n", model.betaT['ne'].sum())
+print("learned beta_ni:\n", model.betaT['ni'].sum())
+print("learned beta_V:\n", model.betaT['V'].sum())
+print("learned beta_Gamma_i:\n", model.betaT['Gamma_i'].sum())
+print("learned beta_Gamma_e:\n", model.betaT['Gamma_e'].sum())
 # print("learned beta shape:\n", model.betaT.shape)
 print("test score:\n", model.train_score)
 #%%
@@ -149,7 +174,7 @@ plt.figure(figsize=(10,8))
 plt.semilogy(model.res_hist)
 
 if is_save_figure:
-    plt.savefig(f"figure/_argon_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_res_hist_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -190,7 +215,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/_argon_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -204,7 +229,7 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/_argon_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -221,7 +246,7 @@ for i in range(3):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/_argon_prediction_snapshot_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_snapshot_ni_ne_E_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 plt.figure(figsize=(20,8))
@@ -233,13 +258,14 @@ for i in range(3,5):
     plt.xlabel('t')
     plt.ylabel('x')
 if is_save_figure:
-    plt.savefig(f"figure/_argon_prediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 #%%
 import pickle5 as pickle
 import pandas as pd
 data = pd.read_pickle('dataset/t=1e-09.pkl')
+
 #%%
 ni_test= data['ni'].reshape(-1,1)
 ne_test= data['ne'].reshape(-1,1)
@@ -252,20 +278,22 @@ EGammieGammae = np.concatenate([E_test,Gamma_i_test,Gamma_e_test],axis=1)
 
 #%%
 t_val = 1e-9
+scaling_coeff = [1e16,1e16,1.0,1e20,1e20]
 idx = int(nx*nt*t_val/tr)
 plt.figure(figsize=(20,8))
-titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
+titles = ['$n_i$','$n_e$','-E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(2):
     plt.subplot(1,2,i+1)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[:,i].reshape(nt,nx)[idx,:],label='pred')
+    plt.plot(xs_test,scaling_coeff[i]*U_pred[:,i].reshape(nt,nx)[idx,:],label='pred')
     plt.plot(xs_test,nine[:,i],label='exact')
     # plt.colorbar()/
-    plt.xlabel('t')
-    plt.ylabel('x')
+    plt.xlabel('x')
+    # plt.yscale('log')
+    # plt.ylabel('x')
     plt.legend()
 if is_save_figure:
-    plt.savefig(f"figure/_argon_comparison_snapshot_ni_ne_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_comparison_snapshot_ni_ne_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
 
@@ -293,20 +321,26 @@ Gamma_e_pred = Gamma_e(X_test[:,0].reshape(1,-1),X_test[:,1].reshape(1,-1))
 U_pred = np.concatenate([ni_pred,ne_pred,E_pred,Gamma_i_pred,Gamma_e_pred],axis=0).T
 
 #%%
+
 plt.figure(figsize=(30,6))
 for i in range(2,5):
     plt.subplot(1,3,i-1)
     plt.title(titles[i])
-    plt.plot(xs_test,U_pred[:,i].reshape(nt,nx)[idx,:],label='pred')
+    plt.plot(xs_test,scaling_coeff[i]*U_pred[:,i].reshape(nt,nx)[idx,:],label='pred')
+    # plt.plot(xs_test,scaling_coeff[i]*U_pred[:,i].reshape(nt,nx).[idx:idx+nx,i],label='pred')
     plt.plot(xs_test,EGammieGammae[:,i-2],label='exact')
     # plt.colorbar()
-    plt.xlabel('t')
-    plt.ylabel('x')
+    plt.xlabel('x')
+    # plt.ylabel('')
+    # plt.yscale('log')
     plt.legend()
 if is_save_figure:
-    plt.savefig(f"figure/_argon_comparison_snapshot_E_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf",bbox_inches='tight')
+    plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_comparison_snapshot_E_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
+#%%
+#%%
+#%%
 #%%
 #%%
 #%%
@@ -328,7 +362,7 @@ for i in range(0,15,3):
 plt.show()
 
 if is_save_figure:
-    plt.savefig(f"figure/argon_result_act_func_{model.act_func_name}_N_colloc_{N_colloc}.pdf")
+    plt.savefig(f"figure/argon_[{tl}_{tr}_result_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf")
 else:
     plt.show()
 
@@ -350,4 +384,4 @@ saving_dict['U_pred']=onp.array(U_pred)
 saving_dict['W']= onp.array(model.W)
 saving_dict['b']= onp.array(model.b)
 saving_dict['beta']= onp.array(model.beta)
-savemat(f"each_time_interval/argon_result_act_func_{model.act_func}_N_colloc_{N_colloc}.mat",saving_dict)
+savemat(f"each_time_interval/argon_[{tl}_{tr}_result_act_func_{model.act_func}_N_colloc_{N_colloc}.mat",saving_dict)
