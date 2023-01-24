@@ -1,0 +1,25 @@
+model options:  {'random_generating_func_W': <function random_generating_func_W at 0x7f488ecdf790>, 'random_generating_func_b': <function random_generating_func_b at 0x7f4a083c90d0>, 'random_initializing_func_betaT': <function random_initializing_func_betaT at 0x7f4a0839fd30>, 'init_beta_scales': {'ni': 1.0, 'ne': 1.0, 'V': 1.0, 'Gamma_i': 1.0, 'Gamma_e': 1.0}, 'act_func_name': 'gauss', 'hidden_units': 10, 'physics_param': {'L': 0.02, 'mu_e': 20.0, 'gamma': 0.01, 'D_e': 50.0, 'D_i': 0.01, 'eps_0': 8.8541878128e-12, 'qe': 1.602176634e-19, 'p': 1.0, 'mu_i': <function mu_i at 0x7f4a0839fc10>, 'alpha_iz': <function alpha_iz at 0x7f488ecdf550>}, 'random_seed': 1674564716, 'quadrature': False, 'input_dim': 2, 'output_dim': 5}
+N_colloc:  100
+Train_score when iter=0: 53043.069835535396
+Train_score when iter=1: 15088.214185115407
+Train_score when iter=2: 13893.404031919365
+Train_score when iter=3: 13633.976603917528
+Train_score when iter=4: 13509.710678140964
+Train_score when iter=5: 13456.94055784733
+Train_score when iter=6: 13434.57266605021
+Train_score when iter=7: 13425.27480010261
+Train_score when iter=8: 13421.524228765942
+Train_score when iter=9: 13420.011493993366
+45.02027440071106  seconds cost for nonlinear least square.
+learned beta_ne:
+ -44167402773.508575
+learned beta_ni:
+ -5777744556.07339
+learned beta_V:
+ 198661234.5223857
+learned beta_Gamma_i:
+ 365630580.21500456
+learned beta_Gamma_e:
+ -1736624.4583694632
+test score:
+ 13420.011493993366

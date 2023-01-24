@@ -31,8 +31,8 @@ plt.rcParams['lines.linewidth']=3
 #%%
 
 is_py = False
-is_save_figure = False
-is_save_txt = False
+is_save_figure = True
+is_save_txt = True
 #%%
 # Load test data
 
@@ -101,7 +101,7 @@ def random_initializing_func_betaT(self,token,size):
 init_beta_scales={}#[1e16,1e16,1e5,1e20,1e22]
 init_beta_scales['ni']=1.0#e16
 init_beta_scales['ne']=1.0#e16
-init_beta_scales['V']=1e3#1.0#e3
+init_beta_scales['V']=1.0#1.0#e3
 init_beta_scales['Gamma_i']=1.0#e20
 init_beta_scales['Gamma_e']=1.0#e22
 p= 1.0
@@ -133,7 +133,7 @@ model = elm(X=X_colloc,random_generating_func_W=random_generating_func_W,
                      random_generating_func_b=random_generating_func_b,act_func_name=act_func_name,
                      hidden_units=10, physics_param=physics_param,random_seed=random_seed,
                      quadrature=False,init_beta_scales=init_beta_scales,random_initializing_func_betaT=random_initializing_func_betaT)
-num_iter = 30
+num_iter = 10
 
 if is_save_txt:
     sys.stdout = open(f"logs/argon_[{tl}_{tr}_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.txt",'w')
