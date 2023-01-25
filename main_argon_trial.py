@@ -1,5 +1,5 @@
 #%%
-from elm_argon_class import elm
+from elm_argon_class_fixed import elm
 import numpy as onp
 import time
 import jax.numpy as np
@@ -65,7 +65,7 @@ N_colloc =50
 xl= 0.0
 xr= 2e-2
 tl = 0.0
-tr =  2e-9#4e-4
+tr =  1e-9#4e-4
 L = xr-xl
 xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
@@ -76,6 +76,7 @@ ts = onp.random.uniform(tl,tr,N_colloc)
 # ts = onp.zeros(N_colloc)
 # Xs, Ts = onp.meshgrid(xs,ts)
 X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
+
 
 #%%
 # build model and train
@@ -134,7 +135,7 @@ if is_save_txt:
 print("model options: ",model.option_dict)
 print('N_colloc: ',N_colloc)
 
-model.fit(num_iter =10)
+model.fit(num_iter =30)
 #%%
 print("learned beta:\n", model.betaT['ne'].sum())
 print("learned beta:\n", model.betaT['ni'].sum())
@@ -210,7 +211,7 @@ else:
 
 #%%
 t_val = 1e-9
-idx = int(nx*nt*t_val/tr)
+idx = int((nx*nt-1)*t_val/tr)
 plt.figure(figsize=(30,6))
 titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(3):
@@ -252,7 +253,7 @@ EGammieGammae = np.concatenate([E_test,Gamma_i_test,Gamma_e_test],axis=1)
 
 #%%
 t_val = 1e-9
-idx = int(nx*nt*t_val/tr)
+idx = int((nx*nt-1)*t_val/tr)
 plt.figure(figsize=(20,8))
 titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(2):

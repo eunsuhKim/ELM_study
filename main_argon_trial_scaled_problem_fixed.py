@@ -31,8 +31,8 @@ plt.rcParams['lines.linewidth']=3
 #%%
 
 is_py = False
-is_save_figure = True
-is_save_txt = True
+is_save_figure = False
+is_save_txt = False
 #%%
 # Load test data
 
@@ -58,14 +58,14 @@ random_seed = int(time.time())
 print('Colloc random seed:',random_seed)
 onp.random.seed(random_seed)
 
-N_colloc =100
+N_colloc =500
 
 #roots= roots_legendre(N_colloc-2)[0].reshape(-1,1)
 #ts_ = (roots+1)/2*(tr-tl)+tl
 xl= 0.0
 xr= 2e-2
 tl = 0.0
-tr =  1.5*1e-9#4e-4
+tr =  1e-9#4e-4
 L = xr-xl
 xs = onp.random.uniform(xl,xr,N_colloc)
 # xs = onp.zeros(N_colloc)
@@ -81,7 +81,7 @@ X_colloc = np.concatenate([xs.reshape(1,-1),ts.reshape(1,-1)],axis=0)
 # build model and train
 
 
-act_func_name = 'gauss' #sigmoid,sin
+act_func_name = 'tanh' #sigmoid,sin
 
 def random_generating_func_W(self,size):
     # scale = np.sqrt(6/(self.input_dim+self.hidden_units))
@@ -235,7 +235,7 @@ else:
 
 #%%
 t_val = 1e-9
-idx = int(nx*nt*t_val/tr)
+idx = int((nx*nt-1)*t_val/tr)
 plt.figure(figsize=(30,6))
 titles = ['$n_i$','$n_e$','E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(3):
@@ -261,6 +261,7 @@ if is_save_figure:
     plt.savefig(f"figure/argon_[{tl}_{tr}_scale_prob_prediction_snapshot_Gamma_i_Gamma_e_act_func_{model.act_func_name}_N_colloc_{N_colloc}_num_iter_{num_iter}.pdf",bbox_inches='tight')
 else:
     plt.show()
+
 #%%
 import pickle5 as pickle
 import pandas as pd
@@ -279,7 +280,7 @@ EGammieGammae = np.concatenate([E_test,Gamma_i_test,Gamma_e_test],axis=1)
 #%%
 t_val = 1e-9
 scaling_coeff = [1e16,1e16,1.0,1e20,1e20]
-idx = int(nx*nt*t_val/tr)
+idx = int((nx*nt-1)*t_val/tr)
 plt.figure(figsize=(20,8))
 titles = ['$n_i$','$n_e$','-E','$\\Gamma_i$','$\\Gamma_e$']
 for i in range(2):

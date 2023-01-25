@@ -291,7 +291,9 @@ class elm():
         
         
     def sigma(self,X,token=None):
-        return self.act_func(self.W[token] @ (X*np.array([[50.0],[1e8]])) + self.b[token])
+        # return self.act_func(self.W[token] @ (X) + self.b[token])
+        # return self.act_func(self.W[token] @ (X*np.array([[50.0],[1e8]])) + self.b[token])
+        return self.act_func(self.W[token] @ (X*np.array([[100.0],[2e9]])-1) + self.b[token])
     
     def prediction_functions(self):#, betaT_ni,betaT_ne, betaT_V, betaT_Gamma_i, betaT_Gamma_e):
         NN_ni = lambda x,t: self.betaT['ni'] @ self.sigma(np.concatenate([x.reshape(1,-1),t.reshape(1,-1)],axis=0),token='ni')
